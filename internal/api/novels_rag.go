@@ -25,7 +25,7 @@ func (a *API) handleNovelRAGSearch(w http.ResponseWriter, r *http.Request, names
 		wf.Status.WorkspacePath = wfengine.WorkspacePath(wf)
 	}
 	topK := rag.TopK(wf.Spec.Params)
-	chunks, err := rag.SearchAt(wfengine.WorkspacePath(wf), query, topK)
+	chunks, err := rag.SearchAtForParams(wfengine.WorkspacePath(wf), query, topK, wf.Spec.Params)
 	if err != nil {
 		writeJSON(w, Response{Success: false, Error: err.Error()})
 		return

@@ -33,6 +33,7 @@ func DefaultNovelParams(chapterCount int) map[string]string {
 		"pauseOnStepFail":        "false",
 		"threeStage":             "true",
 		"ragEnabled":             "true",
+		"ragSearchMode":          "hybrid",
 		"ragTopK":                "5",
 		"plotWords":              "1000",
 	}

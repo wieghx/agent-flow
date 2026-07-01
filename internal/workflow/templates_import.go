@@ -75,6 +75,7 @@ func ImportNovelParams(chapterCount int, title string) map[string]string {
 		"title":            title,
 		"qualityThreshold": "75",
 		"ragEnabled":       "true",
+		"ragSearchMode":    "hybrid",
 		"importedNovel":    "true",
 		"continueWriting":  "true",
 		"threeStage":       "true",

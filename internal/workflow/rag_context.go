@@ -13,7 +13,12 @@ func BuildRAGContextBlock(wf *agentflowiov1alpha1.Workflow, title, query string)
 	if wf == nil || !RAGEnabled(wf.Spec.Params) {
 		return ""
 	}
-	chunks, err := rag.SearchAt(WorkspacePath(wf), strings.TrimSpace(title+" "+query), rag.TopK(wf.Spec.Params))
+	chunks, err := rag.SearchAtForParams(
+		WorkspacePath(wf),
+		strings.TrimSpace(title+" "+query),
+		rag.TopK(wf.Spec.Params),
+		wf.Spec.Params,
+	)
 	if err != nil || len(chunks) == 0 {
 		return ""
 	}

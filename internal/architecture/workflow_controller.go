@@ -296,6 +296,9 @@ func (c *WorkflowController) syncRunningTasks(ctx context.Context, wf *agentflow
 			wf.Status.CompletedSteps = append(wf.Status.CompletedSteps, stepID)
 			c.markStepStatus(wf, stepID, agentflowiov1alpha1.TaskPhaseSucceeded, task.Name, "completed", relPath, task.Status.QualityCheck)
 			c.maybeCompleteChaptersGroup(wf)
+			if err := wfengine.UpdateRAGIndexForStep(wf, stepID, relPath); err != nil {
+				log.FromContext(ctx).Error(err, "incremental RAG update failed", "workflow", wf.Name, "step", stepID)
+			}
 			changed = true
 		case agentflowiov1alpha1.TaskPhaseFailed:
 			if c.tryScheduleStepRetry(ctx, wf, stepID, task.Name, task.Status.Message, &task) {

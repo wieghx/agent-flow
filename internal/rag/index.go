@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"unicode"
@@ -218,7 +217,7 @@ func LoadIndexAt(root string) (*Index, error) {
 	return &idx, nil
 }
 
-// RebuildIndexAt rebuilds and persists the workspace index.
+// RebuildIndexAt rebuilds and persists the workspace index and optional vectors.
 func RebuildIndexAt(root string) (*Index, error) {
 	idx, err := BuildIndexFromWorkspaceRoot(root)
 	if err != nil {
@@ -226,6 +225,9 @@ func RebuildIndexAt(root string) (*Index, error) {
 	}
 	if err := SaveIndexAt(root, idx); err != nil {
 		return nil, err
+	}
+	if err := rebuildVectorsForIndex(root, idx); err != nil {
+		return idx, err
 	}
 	return idx, nil
 }
@@ -243,48 +245,11 @@ func tokenize(s string) map[string]int {
 	return freq
 }
 
-type scoredChunk struct {
-	chunk Chunk
-	score float64
-}
-
-// SearchAt returns top matching chunks for a query under workspace root.
+// SearchAt returns top matching chunks (hybrid when embeddings are configured).
 func SearchAt(root, query string, topK int) ([]Chunk, error) {
-	if topK <= 0 {
-		topK = 5
+	mode := "bm25"
+	if EmbedderFromEnv().Available() {
+		mode = "hybrid"
 	}
-	idx, err := LoadIndexAt(root)
-	if err != nil {
-		if rebuilt, rbErr := RebuildIndexAt(root); rbErr == nil {
-			idx = rebuilt
-		} else {
-			return nil, err
-		}
-	}
-	qFreq := tokenize(query)
-	if len(qFreq) == 0 {
-		return nil, nil
-	}
-	var ranked []scoredChunk
-	for _, ch := range idx.Chunks {
-		cFreq := tokenize(ch.Text)
-		var score float64
-		for tok, qv := range qFreq {
-			if cv, ok := cFreq[tok]; ok {
-				score += float64(qv*cv) / float64(len(cFreq)+1)
-			}
-		}
-		if score > 0 {
-			ranked = append(ranked, scoredChunk{chunk: ch, score: score})
-		}
-	}
-	sort.Slice(ranked, func(i, j int) bool { return ranked[i].score > ranked[j].score })
-	if len(ranked) > topK {
-		ranked = ranked[:topK]
-	}
-	out := make([]Chunk, len(ranked))
-	for i, r := range ranked {
-		out[i] = r.chunk
-	}
-	return out, nil
+	return searchAt(root, query, topK, mode)
 }
