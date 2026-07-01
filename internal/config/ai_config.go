@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -136,7 +137,7 @@ func LoadAIConfig(path string) (*AIConfig, error) {
 	localPath := filepath.Join(filepath.Dir(path), localAIConfigName)
 	if overlay, err := loadAIConfigFile(localPath); err == nil {
 		mergeAIConfig(config, overlay)
-	} else if !os.IsNotExist(err) {
+	} else if !errors.Is(err, os.ErrNotExist) {
 		return nil, err
 	}
 

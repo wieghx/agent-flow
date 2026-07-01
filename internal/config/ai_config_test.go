@@ -6,6 +6,21 @@ import (
 	"testing"
 )
 
+func TestLoadAIConfigWithoutLocalOverlayInTempDir(t *testing.T) {
+	dir := t.TempDir()
+	raw, err := os.ReadFile(filepath.Join("..", "..", "config", "ai_config.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := filepath.Join(dir, "ai_config.yaml")
+	if err := os.WriteFile(base, raw, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadAIConfig(base); err != nil {
+		t.Fatalf("LoadAIConfig without local overlay should succeed: %v", err)
+	}
+}
+
 func TestLoadAIConfigMergesLocalOverlay(t *testing.T) {
 	dir := t.TempDir()
 	base := filepath.Join(dir, "ai_config.yaml")
