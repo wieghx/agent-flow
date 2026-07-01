@@ -1,0 +1,19 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: agent-flow-system
+  labels:
+    app.kubernetes.io/name: agent-flow
+    app.kubernetes.io/component: web
+spec:
+  # kind 无 LoadBalancer；本地访问请: ./run-web.sh (port-forward)
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/component: web
+  ports:
+  - port: 80
+    targetPort: 3000
+    protocol: TCP
+    name: http

@@ -1,0 +1,27 @@
+apiVersion: agentflow.io/v1alpha1
+kind: Task
+metadata:
+  name: mcp-poem-task
+  namespace: default
+  annotations:
+    agentflow.io/mcp-mode: "true"
+    agentflow.io/network-policy: "permissive"
+    agentflow.io/egress-cidrs: "203.0.113.0/24"
+    agentflow.io/egress-ports: "9101,443"
+spec:
+  command:
+    - /bin/sh
+    - -c
+  args:
+    - "echo 'Executing: 写一首关于大海的七言绝句，要求押韵工整，意境开阔'"
+  image: docker.io/library/alpine:latest
+  resources:
+    limits:
+      cpu: "1"
+      memory: "512Mi"
+  retryPolicy:
+    maxRetries: 3
+    retryDelaySeconds: 10
+    retryOn:
+      - OnFailure
+  timeoutSeconds: 120

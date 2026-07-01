@@ -1,0 +1,229 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+  name: workflows.agentflow.io
+spec:
+  group: agentflow.io
+  names:
+    kind: Workflow
+    listKind: WorkflowList
+    plural: workflows
+    singular: workflow
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.phase
+      name: Status
+      type: string
+    - jsonPath: .status.currentStep
+      name: Step
+      type: string
+    - jsonPath: .status.progress.percent
+      name: Progress
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Workflow is the Schema for the workflows API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: WorkflowSpec defines desired workflow state.
+            properties:
+              execution:
+                description: WorkflowExecution controls orchestration behavior.
+                properties:
+                  autoApprove:
+                    type: boolean
+                  chapterMode:
+                    type: string
+                  chapterPipeline:
+                    type: integer
+                  maxParallel:
+                    type: integer
+                  mode:
+                    type: string
+                  pauseOnStepFail:
+                    type: boolean
+                  stepMaxRetries:
+                    type: integer
+                  stepRetryBaseDelaySec:
+                    type: integer
+                  stepRetryMaxDelaySec:
+                    type: integer
+                type: object
+              params:
+                additionalProperties:
+                  type: string
+                type: object
+              prompt:
+                type: string
+              steps:
+                items:
+                  description: WorkflowStep is a single stage in the pipeline.
+                  properties:
+                    dependsOn:
+                      items:
+                        type: string
+                      type: array
+                    foreach:
+                      description: WorkflowForeach expands a step into repeated child
+                        executions.
+                      properties:
+                        instruction:
+                          type: string
+                        jsonPath:
+                          type: string
+                        outputPath:
+                          type: string
+                        source:
+                          type: string
+                        stepIdPrefix:
+                          type: string
+                      type: object
+                    id:
+                      type: string
+                    name:
+                      type: string
+                    optional:
+                      type: boolean
+                    output:
+                      description: WorkflowStepOutput defines where step output is
+                        stored in workspace.
+                      properties:
+                        format:
+                          type: string
+                        path:
+                          type: string
+                      type: object
+                    taskSpec:
+                      description: WorkflowTaskSpec describes AI task execution for
+                        a step.
+                      properties:
+                        mcpMode:
+                          type: boolean
+                        monitorTaskType:
+                          type: string
+                        qualityThreshold:
+                          format: int32
+                          type: integer
+                        workerInstruction:
+                          type: string
+                      type: object
+                    type:
+                      description: WorkflowStepType identifies how a step executes.
+                      type: string
+                  required:
+                  - id
+                  - type
+                  type: object
+                type: array
+              template:
+                type: string
+              workspace:
+                description: WorkflowWorkspace defines artifact storage.
+                properties:
+                  basePath:
+                    type: string
+                  pvc:
+                    type: string
+                type: object
+            type: object
+          status:
+            description: WorkflowStatus defines observed workflow state.
+            properties:
+              completedSteps:
+                items:
+                  type: string
+                type: array
+              completionTime:
+                format: date-time
+                type: string
+              currentStep:
+                type: string
+              failedSteps:
+                items:
+                  type: string
+                type: array
+              message:
+                type: string
+              phase:
+                description: WorkflowPhase represents workflow lifecycle phase.
+                type: string
+              progress:
+                description: WorkflowProgress tracks overall completion.
+                properties:
+                  completed:
+                    format: int32
+                    type: integer
+                  percent:
+                    format: int32
+                    type: integer
+                  total:
+                    format: int32
+                    type: integer
+                type: object
+              startTime:
+                format: date-time
+                type: string
+              stepStatuses:
+                items:
+                  description: WorkflowStepStatus records runtime state for a step.
+                  properties:
+                    finishedAt:
+                      format: date-time
+                      type: string
+                    id:
+                      type: string
+                    message:
+                      type: string
+                    outputPath:
+                      type: string
+                    phase:
+                      description: TaskPhase represents the phase of a task
+                      type: string
+                    retries:
+                      format: int32
+                      type: integer
+                    score:
+                      format: int32
+                      type: integer
+                    startedAt:
+                      format: date-time
+                      type: string
+                    taskName:
+                      type: string
+                  required:
+                  - id
+                  - phase
+                  type: object
+                type: array
+              workspacePath:
+                type: string
+            required:
+            - phase
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

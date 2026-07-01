@@ -1,0 +1,180 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+  name: monitors.agentflow.io
+spec:
+  group: agentflow.io
+  names:
+    kind: Monitor
+    listKind: MonitorList
+    plural: monitors
+    singular: monitor
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: Current status of the monitor
+      jsonPath: .status.phase
+      name: Status
+      type: string
+    - description: Number of tasks monitored
+      jsonPath: .status.tasksMonitored
+      name: Tasks
+      type: integer
+    - description: Time since creation
+      jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Monitor is the Schema for the monitors API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: MonitorSpec defines the desired state of Monitor
+            properties:
+              actions:
+                description: Actions defines what to do when conditions are met
+                items:
+                  description: MonitorAction defines an action to take on certain
+                    conditions
+                  properties:
+                    actionType:
+                      description: ActionType is the type of action to take
+                      type: string
+                    condition:
+                      description: Condition is the condition that triggers this action
+                      type: string
+                    severity:
+                      description: Severity is the alert severity level
+                      type: string
+                  required:
+                  - actionType
+                  - condition
+                  type: object
+                type: array
+              checkIntervalSeconds:
+                description: CheckIntervalSeconds is how often to check task status
+                format: int32
+                type: integer
+              failedTaskThreshold:
+                description: FailedTaskThreshold is how many failures before alerting
+                format: int32
+                type: integer
+              labelSelector:
+                additionalProperties:
+                  type: string
+                description: LabelSelector filters resources by labels
+                type: object
+              namespace:
+                description: Namespace is the namespace to monitor (empty means all
+                  namespaces)
+                type: string
+              staleTaskThreshold:
+                description: StaleTaskThreshold is how long before a task is considered
+                  stale
+                format: int32
+                type: integer
+            type: object
+          status:
+            description: MonitorStatus defines the observed state of Monitor
+            properties:
+              alerts:
+                description: Alerts is the list of recent alerts
+                items:
+                  description: Alert represents a generated alert
+                  properties:
+                    actionType:
+                      description: ActionType is the action taken
+                      type: string
+                    message:
+                      description: Message is the alert message
+                      type: string
+                    phase:
+                      description: Phase is the phase of the task
+                      type: string
+                    taskName:
+                      description: TaskName is the name of the task that triggered
+                        the alert
+                      type: string
+                    time:
+                      description: Time is when the alert was generated
+                      format: date-time
+                      type: string
+                  required:
+                  - actionType
+                  - message
+                  - phase
+                  - taskName
+                  - time
+                  type: object
+                type: array
+              lastCheckTime:
+                description: LastCheckTime is when the last check was performed
+                format: date-time
+                type: string
+              lastCheckTimeUnix:
+                description: LastCheckTimeUnix is when the last check was performed
+                  (Unix timestamp)
+                format: int64
+                type: integer
+              message:
+                description: Message provides additional status information
+                type: string
+              monitoredCount:
+                description: MonitoredCount is the number of tasks being monitored
+                format: int32
+                type: integer
+              phase:
+                description: Phase is the current state of the monitor
+                type: string
+              phaseDistribution:
+                description: PhaseDistribution tracks tasks by phase
+                properties:
+                  cancelled:
+                    format: int32
+                    type: integer
+                  failed:
+                    format: int32
+                    type: integer
+                  pending:
+                    format: int32
+                    type: integer
+                  running:
+                    format: int32
+                    type: integer
+                  succeeded:
+                    format: int32
+                    type: integer
+                type: object
+              startTime:
+                description: StartTime is when the monitor started
+                format: date-time
+                type: string
+            required:
+            - phase
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

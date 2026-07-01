@@ -1,0 +1,51 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sandbox-reader
+  namespace: agent-flow-system
+  labels:
+    app.kubernetes.io/name: agent-flow
+    app.kubernetes.io/component: sandbox
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: sandbox-reader
+  namespace: agent-flow-system
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "secrets", "events", "persistentvolumeclaims", "namespaces"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets", "statefulsets", "daemonsets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["batch"]
+  resources: ["jobs", "cronjobs"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses", "networkpolicies"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["roles", "rolebindings"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["agentflow.io"]
+  resources: ["tasks", "monitors"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["agents.x-k8s.io"]
+  resources: ["sandboxes"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: sandbox-reader
+  namespace: agent-flow-system
+subjects:
+- kind: ServiceAccount
+  name: sandbox-reader
+  namespace: agent-flow-system
+roleRef:
+  kind: Role
+  name: sandbox-reader
+  apiGroup: rbac.authorization.k8s.io

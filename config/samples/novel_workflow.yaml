@@ -1,0 +1,23 @@
+apiVersion: agentflow.io/v1alpha1
+kind: Workflow
+metadata:
+  name: novel-survival-demo
+  namespace: default
+  labels:
+    agentflow.io/template: novel-outline-chapters
+spec:
+  prompt: |
+    写一部现代荒岛生存小说，主角是户外教练林峰，
+    强调资源匮乏、团队冲突与自然威胁，节奏紧凑。
+  template: novel-outline-chapters
+  params:
+    chapterCount: "5"
+    wordsPerChapter: "2500"
+    qualityThreshold: "75"
+  execution:
+    mode: sequential
+    pauseOnStepFail: true
+    autoApprove: true
+  workspace:
+    pvc: task-outputs
+    basePath: ""

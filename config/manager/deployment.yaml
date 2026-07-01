@@ -1,0 +1,148 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: manager
+  namespace: agent-flow-system
+  labels:
+    app.kubernetes.io/name: agent-flow
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/component: controller
+spec:
+  selector:
+    matchLabels:
+      control-plane: controller-manager
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        control-plane: controller-manager
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - command:
+        - /planner
+        args:
+        - --leader-elect=false
+        - --ai-config=/etc/agentflow/ai_config.yaml
+        - --health-probe-bind-address=:8081
+        - --metrics-bind-address=:8080
+        - --api-port=8082
+        image: kind-local:5000/minagflow/agent-flow-planner:latest
+        imagePullPolicy: IfNotPresent
+        name: manager
+        ports:
+        - containerPort: 8082
+          name: http-api
+          protocol: TCP
+        - containerPort: 8081
+          name: health
+          protocol: TCP
+        - containerPort: 8080
+          name: metrics
+          protocol: TCP
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - "ALL"
+        volumeMounts:
+        - name: ai-config
+          mountPath: /etc/agentflow
+          readOnly: true
+        - name: task-outputs
+          mountPath: /data/outputs
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 20
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          limits:
+            cpu: "2"
+            memory: 1Gi
+          requests:
+            cpu: 250m
+            memory: 512Mi
+        env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: AGENTFLOW_OUTPUT_DIR
+          value: "/data/outputs"
+        - name: AGENTFLOW_DB_DSN
+          value: "/data/outputs/agentflow/novels.db"
+        - name: AGENTFLOW_SKIP_SANDBOX
+          value: "true"
+        - name: AGENTFLOW_MAX_CONCURRENT_TASKS
+          value: "16"
+        - name: MCP_IMAGE
+          value: "kind-local:5000/minagflow/mcp-sidecar:latest"
+        - name: WORKER_AGENT_IMAGE
+          value: "kind-local:5000/minagflow/worker-agent:latest"
+        - name: REDIS_URL
+          value: "redis://agentflow-redis:6379/0"
+        - name: SANDBOX_NETWORK_POLICY_ENABLED
+          value: "false"
+        - name: HTTP_PROXY
+          value: ""
+        - name: HTTPS_PROXY
+          value: ""
+        - name: http_proxy
+          value: ""
+        - name: https_proxy
+          value: ""
+        - name: AI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-secrets
+              key: AI_API_KEY
+              optional: true
+        - name: AI_BASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: ai-secrets
+              key: AI_BASE_URL
+              optional: true
+      volumes:
+      - name: ai-config
+        configMap:
+          name: ai-config
+      - name: task-outputs
+        persistentVolumeClaim:
+          claimName: task-outputs
+      serviceAccountName: default
+      tolerations:
+      - key: "node-role.kubernetes.io/master"
+        operator: "Exists"
+        effect: "NoSchedule"
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"

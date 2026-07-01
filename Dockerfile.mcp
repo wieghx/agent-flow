@@ -1,0 +1,12 @@
+FROM golang:1.26-alpine AS builder
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /mcp-server ./cmd/mcp-server
+
+FROM alpine:3.19
+RUN apk add --no-cache ca-certificates curl
+COPY --from=builder /mcp-server /usr/local/bin/mcp-server
+EXPOSE 9090
+ENTRYPOINT ["mcp-server"]

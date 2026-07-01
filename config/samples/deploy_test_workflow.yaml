@@ -1,0 +1,23 @@
+apiVersion: agentflow.io/v1alpha1
+kind: Workflow
+metadata:
+  name: deploy-test-novel
+  namespace: default
+spec:
+  workspace:
+    basePath: __WORKSPACE_ROOT__
+  prompt: "写一部短篇荒岛生存小说，两章完结。"
+  template: novel-outline-chapters
+  params:
+    chapterCount: "2"
+    wordsPerChapter: "2000"
+    chapterSegmentMode: "true"
+    chapterSegments: "4"
+    segmentWords: "500"
+    contextChapters: "2"
+    arcInterval: "0"
+    qualityThreshold: "70"
+  execution:
+    mode: sequential
+    pauseOnStepFail: true
+    autoApprove: true

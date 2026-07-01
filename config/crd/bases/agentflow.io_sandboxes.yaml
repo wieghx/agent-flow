@@ -1,0 +1,178 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.16.0
+  name: sandboxes.agentflow.io
+spec:
+  group: agentflow.io
+  names:
+    kind: Sandbox
+    listKind: SandboxList
+    plural: sandboxes
+    singular: sandbox
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    subresources:
+      status: {}
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+                spec:
+                  properties:
+                    lifecycle:
+                      properties:
+                        shutdownPolicy:
+                          type: string
+                        shutdownTime:
+                          format: date-time
+                          type: string
+                      type: object
+                    operatingMode:
+                      type: string
+                    podTemplate:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    taskRef:
+                      properties:
+                        apiVersion:
+                          type: string
+                        kind:
+                          type: string
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    service:
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        headless:
+                          type: boolean
+                      type: object
+                    volumeClaimTemplates:
+                      items:
+                        properties:
+                          accessModes:
+                            items:
+                              type: string
+                            type: array
+                          mountPath:
+                            type: string
+                          name:
+                            type: string
+                          storageClassName:
+                            type: string
+                          storageRequest:
+                            type: string
+                          subPath:
+                            type: string
+                        required:
+                        - name
+                        - mountPath
+                        - storageRequest
+                        type: object
+                      type: array
+                  required:
+                  - taskRef
+                  - podTemplate
+                  type: object
+                status:
+                  properties:
+                    completionTime:
+                      format: date-time
+                      type: string
+                    completionTimeUnix:
+                      format: int64
+                      type: integer
+                    exitCode:
+                      type: integer
+                    message:
+                      type: string
+                    nodeName:
+                      type: string
+                    outputCollected:
+                      type: boolean
+                    outputCollectedTime:
+                      format: date-time
+                      type: string
+                    outputContent:
+                      type: string
+                    outputPath:
+                      type: string
+                    outputSize:
+                      format: int64
+                      type: integer
+                    phase:
+                      type: string
+                    podIPs:
+                      items:
+                        properties:
+                          ip:
+                            type: string
+                          type:
+                            type: string
+                        type: object
+                      type: array
+                    podName:
+                      type: string
+                    podNamespace:
+                      type: string
+                    selector:
+                      type: string
+                    serviceFQDN:
+                      type: string
+                    startTime:
+                      format: date-time
+                      type: string
+                    startTimeUnix:
+                      format: int64
+                      type: integer
+                    conditions:
+                      items:
+                        properties:
+                          lastTransitionTime:
+                            format: date-time
+                            type: string
+                          message:
+                            type: string
+                          reason:
+                            type: string
+                          status:
+                            type: string
+                          type:
+                            type: string
+                        required:
+                        - type
+                        - status
+                        - lastTransitionTime
+                        type: object
+                      type: array
+                  type: object
+    additionalPrinterColumns:
+    - name: Status
+      type: string
+      jsonPath: ".status.phase"
+      description: "Current status of the sandbox"
+    - name: Pod
+      type: string
+      jsonPath: ".status.podName"
+      description: "Associated pod name"
+    - name: Age
+      type: date
+      jsonPath: ".metadata.creationTimestamp"
+      description: "Time since creation"
+    - name: Mode
+      type: string
+      jsonPath: ".spec.operatingMode"
+      description: "Operating mode"

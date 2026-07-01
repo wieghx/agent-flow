@@ -1,0 +1,87 @@
+# Example Task with Sandbox and persistent volume
+apiVersion: agentflow.io/v1alpha1
+kind: Task
+metadata:
+  name: example-sandbox-volume-task
+spec:
+  command: ["/bin/sh"]
+  args:
+    - "-c"
+    - "echo 'Data saved to persistent volume' > /data/output.txt && cat /data/output.txt"
+  image: "alpine:latest"
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  timeoutSeconds: 300
+  retryPolicy:
+    maxRetries: 3
+    retryDelaySeconds: 10
+    retryOn:
+      - OnFailure
+---
+apiVersion: agentflow.io/v1alpha1
+kind: Sandbox
+metadata:
+  name: example-sandbox-volume-task-sandbox
+  namespace: default
+spec:
+  taskRef:
+    apiVersion: agentflow.io/v1alpha1
+    kind: Task
+    name: example-sandbox-volume-task
+  podTemplate:
+    labels:
+      agentflow.io/sandbox: "example-sandbox-volume-task-sandbox"
+      agentflow.io/task: "example-sandbox-volume-task"
+    spec:
+      restartPolicy: "Never"
+      containers:
+        - name: example-sandbox-volume-task-sandbox
+          image: alpine:latest
+          command: ["/bin/sh"]
+          args:
+            - "-c"
+            - "echo 'Data saved to persistent volume' > /data/output.txt && cat /data/output.txt"
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          volumeMounts:
+            - name: output-data
+              mountPath: /data
+              subPath: ""
+      volumes:
+        - name: output-data
+          persistentVolumeClaim:
+            claimName: "" # Will be created automatically
+  volumeClaimTemplates:
+    - name: output-data
+      mountPath: /data
+      storageRequest: "1Gi"
+      accessModes:
+        - ReadWriteOnce
+      storageClassName: null
+  lifecycle:
+    shutdownTime: null
+    shutdownPolicy: "Retain"
+  operatingMode: "Running"
+---
+apiVersion: agentflow.io/v1alpha1
+kind: Monitor
+metadata:
+  name: example-sandbox-volume-task-quality-monitor
+  namespace: default
+spec:
+  labelSelector:
+    matchLabels:
+      agentflow.io/sandbox: "example-sandbox-volume-task-sandbox"
+  checkIntervalSeconds: 5
+  failedTaskThreshold: 1
+  staleTaskThreshold: 120
+  actions:
+    - condition: "OnFailure"
+      actionType: "Alert"
+      config:
+        severity: "high"
+        action: "notify-retry"

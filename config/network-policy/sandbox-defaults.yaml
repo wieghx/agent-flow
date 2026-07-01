@@ -1,0 +1,16 @@
+# Baseline ingress isolation for sandbox pods in the default namespace.
+# Per-task egress policies are created dynamically by the controller.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: agentflow-sandbox-ingress-deny
+  namespace: default
+  labels:
+    agentflow.io/managed-by: agentflow-static
+spec:
+  podSelector:
+    matchLabels:
+      agentflow.io/sandbox: "true"
+  policyTypes:
+  - Ingress
+  ingress: []

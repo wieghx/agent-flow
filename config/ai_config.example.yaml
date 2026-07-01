@@ -1,0 +1,159 @@
+# Copy to ai_config.local.yaml for secrets (gitignored), or set AI_API_KEY / AI_BASE_URL.
+# Committed ai_config.yaml uses placeholders only — never put real keys in git.
+
+global:
+  default_model: Qwen3.5-35B-A3B
+  system_prompt: |
+    你是一个任务编排助手，负责帮助用户分析和分配任务。
+    你的职责是：
+    1. 分析用户的需求
+    2. 创建合适的任务计划
+    3. 评估是否需要质量检查
+    4. 提供资源预估和执行时间
+
+planner:
+  description: 任务规划大脑 - 分析需求、创建任务、分配资源
+  mode: remote
+  remote:
+    enabled: true
+    base_url: ${AI_BASE_URL}
+    api_key: ${AI_API_KEY}
+    model: Qwen3.5-35B-A3B
+    temperature: 0.7
+    max_tokens: 65536
+    timeout_seconds: 300
+    request:
+      headers:
+        Content-Type: application/json
+        Authorization: Bearer ${AI_API_KEY}
+      body_template: |
+        {
+          "model": "{{.Model}}",
+          "messages": [
+            {"role": "system", "content": "{{.SystemPrompt}}"},
+            {"role": "user", "content": "{{.UserMessage}}"}
+          ],
+          "temperature": {{.Temperature}},
+          "max_tokens": {{.MaxTokens}}
+        }
+    response:
+      extract_field: choices[0].message.content
+      error_field: error.message
+  system_prompt: |
+    你是一个任务规划大师，擅长分析用户需求并创建合适的 AI 任务。
+    你的职责是：
+    1. 理解用户的需求（如写七言绝句）
+    2. 创建对应的 Task CRD 来分配任务给 Worker
+    3. 设置合适的环境变量和资源配置
+    4. 自动创建对应的 Monitor 用于质量检查
+  local:
+    enabled: false
+    base_url: http://localhost:11434
+    model: qwen2.5:7b
+    temperature: 0.7
+    top_p: 0.9
+    max_tokens: 2048
+    timeout_seconds: 120
+
+worker:
+  description: 任务执行者 - 执行具体任务，报告结果
+  mode: remote
+  remote:
+    enabled: true
+    base_url: ${AI_BASE_URL}
+    api_key: ${AI_API_KEY}
+    model: Qwen3.5-35B-A3B
+    temperature: 0.7
+    max_tokens: 8192
+    timeout_seconds: 300
+    request:
+      headers:
+        Content-Type: application/json
+        Authorization: Bearer ${AI_API_KEY}
+      body_template: |
+        {
+          "model": "{{.Model}}",
+          "messages": [
+            {"role": "system", "content": "{{.SystemPrompt}}"},
+            {"role": "user", "content": "{{.UserMessage}}"}
+          ],
+          "temperature": {{.Temperature}},
+          "max_tokens": {{.MaxTokens}}
+        }
+    response:
+      extract_field: choices[0].message.content
+      error_field: error.message
+  system_prompt: |
+    你是一个任务执行者。根据给定的指令执行任务，直接输出最终结果。
+    重要规则：
+    1. 不要输出思考过程、分析步骤或推理链
+    2. 只输出最终的执行结果
+    3. 简洁明了，不要废话
+  local:
+    enabled: true
+    base_url: http://localhost:11434
+    model: qwen2.5:7b
+    temperature: 0.7
+    top_p: 0.9
+    max_tokens: 4096
+    timeout_seconds: 300
+    endpoints:
+      generate: /api/generate
+      chat: /api/chat
+    chat:
+      system_prompt: 你是一个任务执行者。根据给定的指令执行任务，生成高质量的产出物。只输出最终结果，不要输出过程说明。
+
+monitor:
+  description: 质量检查监工 - 评估任务质量，决定是否需要重试
+  mode: remote
+  remote:
+    enabled: true
+    base_url: ${AI_BASE_URL}
+    api_key: ${AI_API_KEY}
+    model: Qwen3.5-35B-A3B
+    temperature: 0.2
+    max_tokens: 4096
+    timeout_seconds: 300
+    request:
+      headers:
+        Content-Type: application/json
+        Authorization: Bearer ${AI_API_KEY}
+      body_template: |
+        {
+          "model": "{{.Model}}",
+          "messages": [
+            {"role": "system", "content": "{{.SystemPrompt}}"},
+            {"role": "user", "content": "{{.UserMessage}}"}
+          ],
+          "temperature": {{.Temperature}},
+          "max_tokens": {{.MaxTokens}}
+        }
+    response:
+      extract_field: choices[0].message.content
+      error_field: error.message
+  system_prompt: |
+    你是一位质量检查监工，负责审查任务产出质量。
+    请按 JSON 格式返回 score、passed、feedback、issues 字段。
+  local:
+    enabled: false
+    base_url: http://localhost:11434
+    model: qwen2.5:0.5b
+    temperature: 0.3
+    top_p: 0.9
+    max_tokens: 512
+    timeout_seconds: 60
+
+logging:
+  level: info
+  ai_requests: true
+  ai_responses: true
+  max_logs: 100
+
+retry:
+  max_retries: 3
+  base_delay_seconds: 5
+  max_delay_seconds: 60
+
+quality:
+  threshold: 70
+  max_retries: 3

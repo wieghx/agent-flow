@@ -1,0 +1,30 @@
+# Binaries
+/planner
+/worker-agent
+/mcp-server
+/bin/
+
+# Test / coverage
+cover.out
+*.out
+
+# Node web
+web/node_modules/
+web/dist/
+
+# Runtime outputs
+/data/outputs/
+
+# IDE / AI tool state
+.claude/
+.mimocode/
+config/manager/.claude/
+
+# Go
+*.test
+*.exe
+
+# Local config overrides
+config/ai_config.local.yaml
+.env
+.env.*

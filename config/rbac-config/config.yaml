@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Config
+metadata:
+  name: agent-flow-config
+data:
+  # Planner settings
+  planner:
+    maxParallelWorkers: 10
+    workerImage: "alpine:3.19"
+    workerMemoryLimit: "256Mi"
+    workerMemoryRequest: "128Mi"
+    workerCpuLimit: "500m"
+    workerCpuRequest: "250m"
+
+  # Worker settings
+  worker:
+    maxRetries: 3
+    retryDelaySeconds: 10
+    timeoutSeconds: 3600
+
+  # Monitor settings
+  monitor:
+    checkIntervalSeconds: 30
+    failedTaskThreshold: 2
+    staleTaskThreshold: 600

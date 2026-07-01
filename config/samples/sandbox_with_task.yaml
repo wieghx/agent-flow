@@ -1,0 +1,68 @@
+# Example Task with Sandbox configuration
+apiVersion: agentflow.io/v1alpha1
+kind: Task
+metadata:
+  name: example-sandbox-task
+spec:
+  command: ["echo"]
+  args:
+    - "Hello from Sandbox!"
+  image: "alpine:3.19"
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "256Mi"
+  timeoutSeconds: 300
+  retryPolicy:
+    maxRetries: 3
+    retryDelaySeconds: 10
+    retryOn:
+      - OnFailure
+      - OnTimeout
+---
+apiVersion: agentflow.io/v1alpha1
+kind: Sandbox
+metadata:
+  name: example-sandbox-task-sandbox
+  namespace: default
+spec:
+  taskRef:
+    apiVersion: agentflow.io/v1alpha1
+    kind: Task
+    name: example-sandbox-task
+  podTemplate:
+    labels:
+      agentflow.io/sandbox: "example-sandbox-task-sandbox"
+      agentflow.io/task: "example-sandbox-task"
+    spec:
+      restartPolicy: "Never"
+      containers:
+        - name: example-sandbox-task-sandbox
+          image: alpine:3.19
+          command: ["echo"]
+          args:
+            - "Hello from Sandbox!"
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+  lifecycle:
+    shutdownTime: null
+    shutdownPolicy: "Delete"
+  operatingMode: "Running"
+---
+apiVersion: agentflow.io/v1alpha1
+kind: Monitor
+metadata:
+  name: example-sandbox-task-quality-monitor
+  namespace: default
+spec:
+  labelSelector:
+    agentflow.io/sandbox: "example-sandbox-task-sandbox"
+  checkIntervalSeconds: 5
+  failedTaskThreshold: 1
+  staleTaskThreshold: 120
+  actions:
+    - condition: "OnFailure"
+      actionType: "Alert"
+      severity: "high"
