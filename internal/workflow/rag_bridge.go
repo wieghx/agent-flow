@@ -20,8 +20,11 @@ func UpdateRAGIndexForStep(wf *agentflowiov1alpha1.Workflow, stepID, relPath str
 	root := WorkspacePath(wf)
 	relPath = strings.TrimSpace(relPath)
 
-	if isOutlineRAGStep(stepID, relPath) {
+	if stepID == "outline-sync" || isOutlineRAGStep(stepID, relPath) {
 		return rag.RefreshOutlineAt(root)
+	}
+	if stepID == "rewrite" && relPath != "" {
+		return rag.UpsertArtifactAt(root, relPath)
 	}
 	if relPath == "" {
 		return nil

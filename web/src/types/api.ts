@@ -95,6 +95,20 @@ export interface RAGSearchResult {
   chunks: RAGChunk[];
 }
 
+export interface RegenerateChapterPayload {
+  instruction: string;
+  layer?: 'plot' | 'chapter';
+}
+
+export interface RegenerateChapterResult {
+  parent_workflow: string;
+  rewrite_workflow: string;
+  namespace: string;
+  chapter_num: number;
+  layer: string;
+  workspace_path?: string;
+}
+
 export interface WorkflowSummary {
   name: string;
   namespace: string;

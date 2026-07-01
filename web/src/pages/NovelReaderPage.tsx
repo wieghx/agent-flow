@@ -1,9 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { fetchNovels, fetchTextAsset, fetchWorkflowDetail, fetchWorkflows } from '@/api/client';
+import {
+  fetchNovels,
+  fetchTextAsset,
+  fetchWorkflowDetail,
+  fetchWorkflows,
+  regenerateChapter,
+} from '@/api/client';
 import { usePolling } from '@/hooks/usePolling';
-import { chapterUrlFromStep, outlineUrl } from '@/lib/paths';
+import { chapterNumFromStepId, chapterUrlFromStep, outlineUrl } from '@/lib/paths';
 import { PhaseBadge } from '@/components/PhaseBadge';
+import { Modal } from '@/components/Modal';
 
 export function NovelReaderPage() {
   const params = useParams();
@@ -18,6 +25,14 @@ export function NovelReaderPage() {
   const [chapterText, setChapterText] = useState('');
   const [loadingChapter, setLoadingChapter] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [showRewrite, setShowRewrite] = useState(false);
+  const [rewriteLayer, setRewriteLayer] = useState<'chapter' | 'plot'>('chapter');
+  const [rewriteInstruction, setRewriteInstruction] = useState('');
+  const [selectedExcerpt, setSelectedExcerpt] = useState('');
+  const [rewriting, setRewriting] = useState(false);
+  const [rewriteJob, setRewriteJob] = useState<string | null>(null);
+  const [rewriteStatus, setRewriteStatus] = useState<string | null>(null);
 
   const activeName = workflowName || workflows[0]?.name || '';
   const activeNovel = novels.find((n) => n.namespace === namespace && n.name === activeName);
@@ -47,17 +62,8 @@ export function NovelReaderPage() {
     [status?.completedSteps],
   );
 
-  useEffect(() => {
-    if (!selectedChapter && completedChapters.length > 0) {
-      setSelectedChapter(completedChapters[0]);
-    }
-  }, [completedChapters, selectedChapter]);
-
-  useEffect(() => {
-    if (!selectedChapter || !workspace) {
-      setChapterText('');
-      return;
-    }
+  const reloadChapterText = useCallback(() => {
+    if (!selectedChapter || !workspace) return;
     const url = chapterUrlFromStep(workspace, selectedChapter);
     if (!url) return;
     setLoadingChapter(true);
@@ -73,6 +79,41 @@ export function NovelReaderPage() {
       .finally(() => setLoadingChapter(false));
   }, [selectedChapter, workspace]);
 
+  useEffect(() => {
+    if (!selectedChapter && completedChapters.length > 0) {
+      setSelectedChapter(completedChapters[0]);
+    }
+  }, [completedChapters, selectedChapter]);
+
+  useEffect(() => {
+    reloadChapterText();
+  }, [reloadChapterText]);
+
+  useEffect(() => {
+    if (!rewriteJob) return;
+    const poll = async () => {
+      try {
+        const wf = await fetchWorkflowDetail(rewriteJob, namespace);
+        const phase = wf.status?.phase || 'Unknown';
+        setRewriteStatus(phase);
+        if (phase === 'Succeeded') {
+          setRewriteJob(null);
+          setRewriteStatus(null);
+          await loadDetail();
+          reloadChapterText();
+        } else if (phase === 'Failed') {
+          setRewriteJob(null);
+          setError(`重写失败: ${wf.status?.message || 'unknown'}`);
+        }
+      } catch {
+        /* ignore transient */
+      }
+    };
+    poll();
+    const id = window.setInterval(poll, 5000);
+    return () => window.clearInterval(id);
+  }, [rewriteJob, namespace, loadDetail, reloadChapterText]);
+
   const onSelectWorkflow = (name: string) => {
     setSearchParams({ wf: name });
     setSelectedChapter('');
@@ -86,6 +127,45 @@ export function NovelReaderPage() {
       if (activeName) prev.set('wf', activeName);
       return prev;
     });
+  };
+
+  const onTextSelection = () => {
+    const sel = window.getSelection()?.toString().trim();
+    if (sel && sel.length >= 8) {
+      setSelectedExcerpt(sel);
+    }
+  };
+
+  const openRewrite = () => {
+    const base = rewriteInstruction.trim();
+    if (selectedExcerpt && !base.includes(selectedExcerpt.slice(0, 40))) {
+      setRewriteInstruction(
+        base
+          ? `${base}\n\n【选中片段】\n${selectedExcerpt}`
+          : `请修改以下片段：\n${selectedExcerpt}`,
+      );
+    }
+    setShowRewrite(true);
+  };
+
+  const submitRewrite = async () => {
+    const num = chapterNumFromStepId(selectedChapter);
+    if (!num || !rewriteInstruction.trim()) return;
+    setRewriting(true);
+    setError(null);
+    try {
+      const res = await regenerateChapter(namespace, activeName, num, {
+        instruction: rewriteInstruction.trim(),
+        layer: rewriteLayer,
+      });
+      setRewriteJob(res.rewrite_workflow);
+      setRewriteStatus('Running');
+      setShowRewrite(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRewriting(false);
+    }
   };
 
   if (!workflows.length && !activeName) {
@@ -122,6 +202,9 @@ export function NovelReaderPage() {
               <span className="text-gray-400">{status.progress?.percent ?? 0}%</span>
             </div>
             <p className="text-gray-500">{status.message}</p>
+            {rewriteStatus && (
+              <p className="text-amber-400">重写进行中… ({rewriteStatus})</p>
+            )}
             {outlineUrl(workspace) && (
               <a href={outlineUrl(workspace)!} target="_blank" rel="noreferrer" className="text-primary hover:underline block">
                 查看 outline.json
@@ -160,17 +243,85 @@ export function NovelReaderPage() {
         {error && <p className="text-xs text-red-400">{error}</p>}
       </aside>
 
-      <article className="flex-1 p-6 overflow-y-auto">
-        {loadingChapter && <p className="text-gray-500">加载中...</p>}
-        {!loadingChapter && !chapterText && (
-          <p className="text-gray-500 text-center mt-20">选择左侧章节开始阅读</p>
-        )}
-        {!loadingChapter && chapterText && (
-          <div className="max-w-3xl mx-auto prose prose-invert prose-sm">
-            <pre className="whitespace-pre-wrap font-sans text-base leading-relaxed text-gray-100">{chapterText}</pre>
-          </div>
-        )}
+      <article className="flex-1 flex flex-col min-h-0">
+        <div className="flex items-center justify-between gap-3 px-6 py-3 border-b border-dark-border bg-dark-card/50">
+          <p className="text-sm text-gray-400 truncate">
+            {selectedChapter ? `阅读 ${selectedChapter}` : '未选择章节'}
+          </p>
+          <button
+            type="button"
+            disabled={!selectedChapter || !!rewriteJob}
+            onClick={openRewrite}
+            className="text-sm px-3 py-1.5 bg-primary rounded-lg disabled:opacity-40"
+          >
+            重写本章
+          </button>
+        </div>
+
+        <div className="flex-1 p-6 overflow-y-auto" onMouseUp={onTextSelection}>
+          {loadingChapter && <p className="text-gray-500">加载中...</p>}
+          {!loadingChapter && !chapterText && (
+            <p className="text-gray-500 text-center mt-20">选择左侧章节开始阅读</p>
+          )}
+          {!loadingChapter && chapterText && (
+            <div className="max-w-3xl mx-auto">
+              {selectedExcerpt && (
+                <p className="text-xs text-gray-500 mb-3 border border-dark-border rounded p-2">
+                  已选中片段（{selectedExcerpt.length} 字），点「重写本章」可带入修改意见
+                </p>
+              )}
+              <pre className="whitespace-pre-wrap font-sans text-base leading-relaxed text-gray-100">
+                {chapterText}
+              </pre>
+            </div>
+          )}
+        </div>
       </article>
+
+      <Modal open={showRewrite} onClose={() => setShowRewrite(false)} title="重写本章">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-400">
+            将启动独立重写任务（RAG 参考 + 质检 + 同步梗概），完成后自动刷新本章正文。
+          </p>
+          <label className="block text-sm">
+            <span className="text-gray-400">重写层级</span>
+            <select
+              className="mt-1 w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2"
+              value={rewriteLayer}
+              onChange={(e) => setRewriteLayer(e.target.value as 'chapter' | 'plot')}
+            >
+              <option value="chapter">正文</option>
+              <option value="plot">剧情脚本</option>
+            </select>
+          </label>
+          <label className="block text-sm">
+            <span className="text-gray-400">修改意见 *</span>
+            <textarea
+              className="mt-1 w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 min-h-[140px]"
+              value={rewriteInstruction}
+              onChange={(e) => setRewriteInstruction(e.target.value)}
+              placeholder="例如：加强开篇悬念；选中片段语气更冷峻……"
+            />
+          </label>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowRewrite(false)}
+              className="px-4 py-2 border border-dark-border rounded-lg text-sm"
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              disabled={rewriting || !rewriteInstruction.trim()}
+              onClick={submitRewrite}
+              className="px-4 py-2 bg-primary rounded-lg text-sm font-medium disabled:opacity-50"
+            >
+              {rewriting ? '提交中…' : '开始重写'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

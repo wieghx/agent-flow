@@ -101,6 +101,13 @@ func (a *API) handleNovelRoutes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch {
+	case len(parts) >= 5 && parts[2] == "chapters" && parts[4] == "regenerate" && r.Method == http.MethodPost:
+		chNum, err := parseChapterNumFromPath(parts[3])
+		if err != nil {
+			writeJSON(w, Response{Success: false, Error: err.Error()})
+			return
+		}
+		a.handleNovelRegenerateChapter(w, r, namespace, name, chNum)
 	case action == "rag" && len(parts) >= 4 && parts[3] == "search" && r.Method == http.MethodGet:
 		a.handleNovelRAGSearch(w, r, namespace, name)
 	case action == "resume" && r.Method == http.MethodPost:

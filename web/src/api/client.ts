@@ -6,6 +6,8 @@ import type {
   ImportNovelPayload,
   NovelSummary,
   RAGSearchResult,
+  RegenerateChapterPayload,
+  RegenerateChapterResult,
   PendingTask,
   PendingWorkflow,
   TaskSummary,
@@ -55,6 +57,22 @@ export async function importNovel(payload: ImportNovelPayload): Promise<NovelSum
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
+}
+
+export async function regenerateChapter(
+  namespace: string,
+  name: string,
+  chapterNum: number,
+  payload: RegenerateChapterPayload,
+): Promise<RegenerateChapterResult> {
+  return request<RegenerateChapterResult>(
+    `/novels/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}/chapters/${chapterNum}/regenerate`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    },
+  );
 }
 
 export async function searchNovelRAG(

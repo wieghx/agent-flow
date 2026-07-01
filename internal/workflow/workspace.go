@@ -16,6 +16,11 @@ func WorkspacePath(wf *agentflowiov1alpha1.Workflow) string {
 	if wf.Status.WorkspacePath != "" {
 		return wf.Status.WorkspacePath
 	}
+	if wf != nil && wf.Spec.Params != nil {
+		if shared := strings.TrimSpace(wf.Spec.Params[ParamSharedWorkspace]); shared != "" {
+			return shared
+		}
+	}
 	base := defaultWorkspaceRoot
 	if wf.Spec.Workspace.BasePath != "" {
 		base = wf.Spec.Workspace.BasePath

@@ -39,6 +39,12 @@ export function chapterUrlFromStep(
   return workspaceRelativeUrl(workspacePath, `chapters/${stepId}.md`);
 }
 
+export function chapterNumFromStepId(stepId: string): number | null {
+  const m = stepId.match(/^chapter-(\d+)$/);
+  if (!m) return null;
+  return Number.parseInt(m[1], 10);
+}
+
 export function outlineUrl(workspacePath: string | undefined): string | null {
   return workspaceRelativeUrl(workspacePath, 'outline.json');
 }

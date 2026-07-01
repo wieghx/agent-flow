@@ -15,6 +15,8 @@ func BuildSpecFromTemplate(template string, prompt string, params map[string]str
 		return novelProductionSpec(prompt, params, template), nil
 	case "novel-import-deconstruct":
 		return importDeconstructSpec(prompt, params), nil
+	case "novel-chapter-rewrite":
+		return chapterRewriteSpec(prompt, params), nil
 	default:
 		return agentflowiov1alpha1.WorkflowSpec{}, fmt.Errorf("unknown workflow template: %s", template)
 	}

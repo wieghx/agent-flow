@@ -46,6 +46,16 @@ func EnhanceStepInstruction(wf *agentflowiov1alpha1.Workflow, step ResolvedStep)
 		}
 		return instr
 	}
+	if step.ID == "rewrite" {
+		instr, err := BuildRewriteInstruction(wf)
+		if err != nil {
+			return step.TaskSpec.WorkerInstruction
+		}
+		return instr
+	}
+	if step.ID == "outline-sync" {
+		return BuildOutlineSyncInstruction(RewriteChapterNum(wf.Spec.Params))
+	}
 	if arcEnd, ok := ArcEndFromStepID(step.ID); ok {
 		width := ChapterPaddingWidth(OutlineChapterCount(wf))
 		interval := DefaultArcInterval(wf.Spec.Params, OutlineChapterCount(wf))
