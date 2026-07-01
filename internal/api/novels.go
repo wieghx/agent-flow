@@ -30,6 +30,10 @@ type NovelSummary struct {
 	ChaptersDone    int               `json:"chapters_done"`
 	ChaptersWriting int               `json:"chapters_writing"`
 	ChaptersFailed  int               `json:"chapters_failed"`
+	PlotsDone       int               `json:"plots_done"`
+	PlotsWriting    int               `json:"plots_writing"`
+	PlotsFailed     int               `json:"plots_failed"`
+	PipelineStage   string            `json:"pipeline_stage,omitempty"`
 	Prompt          string            `json:"prompt,omitempty"`
 	Template        string            `json:"template,omitempty"`
 	Params          map[string]string `json:"params,omitempty"`
@@ -394,6 +398,7 @@ func (a *API) buildSummaryFromWorkflow(wf *agentflowiov1alpha1.Workflow, lib *st
 		s.WorkspacePath = wfengine.WorkspacePath(wf)
 	}
 	s.BookURL, s.OutlineURL = artifactURLs(s.WorkspacePath)
+	enrichNovelProgress(wf, &s)
 	return s
 }
 

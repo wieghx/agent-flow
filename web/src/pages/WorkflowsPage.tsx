@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { fetchWorkflows } from '@/api/client';
 import { usePolling } from '@/hooks/usePolling';
 import { PhaseBadge } from '@/components/PhaseBadge';
+import { formatWorkflowStep } from '@/lib/pipeline';
 
 export function WorkflowsPage() {
   const { data: workflows = [], refresh, error } = usePolling(fetchWorkflows, 10000);
@@ -29,7 +30,7 @@ export function WorkflowsPage() {
             </div>
             <div className="flex items-center justify-between text-xs text-gray-500">
               <span>
-                {wf.progress}% · 当前 {wf.currentStep || '-'}
+                {wf.progress}% · 当前 {formatWorkflowStep(wf.currentStep)}
               </span>
               <div className="flex gap-2">
                 <Link

@@ -39,7 +39,10 @@
 - **三层重试** — 分段 / Task / Workflow，指数退避 + 针对性反馈
 - **MCP 工具** — `historical_research`、`web_search`、`wikipedia_search`、`web_fetch` 及文件/HTTP 工具集
 - **混合存储** — PVC 存正文，SQLite 存章节状态与元数据
-- **Web UI** — Vite + React，Workflow 监控、小说库、SSE 进度、章节浏览
+- **三阶段扩写** — 默认 `threeStage=true`：梗概 → 剧情脚本 → 正文，降低长篇跑题
+- **导入拆书** — `POST /novels/import`：导入全文 → AI 拆书 → RAG 索引 → 可选续写
+- **RAG 剧情库** — 关键词检索工作区梗概/剧情/正文，写作时自动注入参考片段
+- **Web UI** — Vite + React，小说库导入、三阶段进度、RAG 检索、SSE 进度、章节浏览
 - **CI** — GitHub Actions：`go test` + 多二进制构建
 
 ## 快速开始
@@ -115,18 +118,52 @@ kubectl get tasks -l agentflow.io/workflow=<workflow-name>
 | `novel-team-chapters` | **默认**团队流水线：设定圣经 + 润色 + 多层质检 |
 | `novel-team-historical` | 团队流水线 + MCP 历史背景调研（自动识别古装/朝代题材） |
 | `novel-outline-chapters` | 旧版单作者流水线（`teamMode=false` 时回退） |
+| `novel-import-deconstruct` | 导入拆书 + RAG 索引 + 可选续写 |
 
-### 团队流水线步骤
+### 团队流水线步骤（默认三阶段）
 
 ```
-历史调研(MCP，可选) → 大纲 → 设定圣经 → 逐章[执笔者 → 润色 → L0/L1/L2 质检] → 合并书稿
+历史调研(MCP，可选) → 大纲 → 大纲精修 → 设定圣经 → 剧情(plots) → 正文(chapters) → 合并书稿
 ```
+
+关闭三阶段时回退为：`大纲精修 → 逐章正文`（设 `threeStage=false`）。
+
+### 导入已有小说（拆书 + 续写）
+
+**Web 小说库** →「导入拆书」，粘贴 TXT 全文。
+
+**API**：
+
+```bash
+curl -s -X POST http://127.0.0.1:18082/novels/import \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "title": "我的旧稿",
+    "text": "第1章 风起\n正文……",
+    "continue_writing": true,
+    "prompt": "拆书后续写方向说明（可选）"
+  }'
+```
+
+流程：`import-deconstruct`（AI 拆书）→ `import-rag-index`（构建索引）→ 可选续写三阶段流水线。
+
+### RAG 剧情检索
+
+```bash
+curl -s "http://127.0.0.1:18082/novels/default/<workflow-name>/rag/search?q=朝堂+宰相"
+```
+
+写作时 `ragEnabled=true`（默认）会自动将相关片段注入 plot / 正文 prompt。
 
 ### 常用参数
 
 | 参数 | 默认 | 说明 |
 |------|------|------|
 | `teamMode` | `true` | 启用团队模式（润色 + 团队质检） |
+| `threeStage` | `true` | 梗概 → 剧情 → 正文三阶段扩写 |
+| `ragEnabled` | `true` | 启用 RAG 检索注入 |
+| `ragTopK` | `5` | 每次检索返回片段数 |
+| `plotWords` | `1000` | 剧情脚本目标字数 |
 | `historicalResearch` | 自动 | 历史/朝代题材自动开启 MCP 调研 |
 | `historicalEra` | — | 时代锚点，如 `明朝万历年间` |
 | `chapterCount` | `10` | 章节数 |

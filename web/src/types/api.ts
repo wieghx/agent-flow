@@ -47,6 +47,10 @@ export interface NovelSummary {
   chapters_done: number;
   chapters_writing: number;
   chapters_failed: number;
+  plots_done?: number;
+  plots_writing?: number;
+  plots_failed?: number;
+  pipeline_stage?: string;
   prompt?: string;
   template?: string;
   params?: Record<string, string>;
@@ -66,6 +70,29 @@ export interface CreateNovelPayload {
   quality_threshold?: number;
   namespace?: string;
   name?: string;
+}
+
+export interface ImportNovelPayload {
+  title?: string;
+  text: string;
+  prompt?: string;
+  continue_writing?: boolean;
+  namespace?: string;
+  name?: string;
+}
+
+export interface RAGChunk {
+  id: string;
+  chapter?: number;
+  title?: string;
+  text: string;
+  source: string;
+}
+
+export interface RAGSearchResult {
+  query: string;
+  count: number;
+  chunks: RAGChunk[];
 }
 
 export interface WorkflowSummary {

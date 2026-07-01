@@ -4,12 +4,15 @@ import {
   createNovel,
   deleteNovel,
   fetchNovels,
+  importNovel,
   resumeNovel,
+  searchNovelRAG,
 } from '@/api/client';
 import { usePolling } from '@/hooks/usePolling';
 import { PhaseBadge } from '@/components/PhaseBadge';
+import { PipelineStageBar } from '@/components/PipelineStageBar';
 import { Modal } from '@/components/Modal';
-import type { NovelSummary } from '@/types/api';
+import type { NovelSummary, RAGChunk } from '@/types/api';
 
 const EMPTY_FORM = {
   title: '',
@@ -19,16 +22,66 @@ const EMPTY_FORM = {
   quality_threshold: 72,
 };
 
+const EMPTY_IMPORT = {
+  title: '',
+  prompt: '',
+  text: '',
+  continue_writing: true,
+};
+
 export function NovelLibraryPage() {
   const { data: novels = [], refresh, error } = usePolling(fetchNovels, 10000);
   const [showCreate, setShowCreate] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [importForm, setImportForm] = useState(EMPTY_IMPORT);
   const [creating, setCreating] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [ragQuery, setRagQuery] = useState('');
+  const [ragChunks, setRagChunks] = useState<RAGChunk[]>([]);
+  const [ragLoading, setRagLoading] = useState(false);
 
   const displayTitle = (n: NovelSummary) =>
     n.title?.trim() || n.name;
+
+  const submitImport = async () => {
+    if (!importForm.text.trim()) return;
+    setImporting(true);
+    setActionError(null);
+    try {
+      await importNovel({
+        title: importForm.title.trim(),
+        prompt: importForm.prompt.trim(),
+        text: importForm.text.trim(),
+        continue_writing: importForm.continue_writing,
+      });
+      setShowImport(false);
+      setImportForm(EMPTY_IMPORT);
+      await refresh();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const onRagSearch = async (n: NovelSummary) => {
+    const q = ragQuery.trim();
+    if (!q) return;
+    setRagLoading(true);
+    setActionError(null);
+    try {
+      const res = await searchNovelRAG(n.namespace, n.name, q);
+      setRagChunks(res.chunks || []);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+      setRagChunks([]);
+    } finally {
+      setRagLoading(false);
+    }
+  };
 
   const submitCreate = async () => {
     if (!form.prompt.trim() && !form.title.trim()) return;
@@ -92,6 +145,13 @@ export function NovelLibraryPage() {
           </button>
           <button
             type="button"
+            onClick={() => setShowImport(true)}
+            className="text-sm px-4 py-2 border border-dark-border rounded-lg hover:bg-dark-bg"
+          >
+            导入拆书
+          </button>
+          <button
+            type="button"
             onClick={() => setShowCreate(true)}
             className="text-sm px-4 py-2 bg-primary rounded-lg font-medium"
           >
@@ -137,6 +197,8 @@ export function NovelLibraryPage() {
                 <p className="text-sm text-gray-400 line-clamp-2">{n.synopsis}</p>
               )}
 
+              <PipelineStageBar novel={n} />
+
               <div className="w-full bg-dark-bg rounded-full h-2">
                 <div
                   className="bg-primary h-2 rounded-full transition-all"
@@ -181,7 +243,17 @@ export function NovelLibraryPage() {
                 )}
                 <button
                   type="button"
-                  onClick={() => setExpanded(isOpen ? null : key)}
+                  onClick={() => {
+                    if (isOpen) {
+                      setExpanded(null);
+                      setRagChunks([]);
+                      setRagQuery('');
+                    } else {
+                      setExpanded(key);
+                      setRagChunks([]);
+                      setRagQuery('');
+                    }
+                  }}
                   className="text-xs px-3 py-1.5 border border-dark-border rounded"
                 >
                   {isOpen ? '收起' : '详情'}
@@ -214,6 +286,38 @@ export function NovelLibraryPage() {
                     <a href={n.outline_url} target="_blank" rel="noreferrer" className="text-primary hover:underline block">
                       查看大纲 JSON
                     </a>
+                  )}
+                  {n.params?.ragEnabled !== 'false' && (
+                    <div className="space-y-2 pt-1">
+                      <p className="text-gray-500">RAG 剧情检索</p>
+                      <div className="flex gap-2">
+                        <input
+                          className="flex-1 bg-dark-bg border border-dark-border rounded px-2 py-1 text-gray-300"
+                          placeholder="关键词，如：朝堂 宰相"
+                          value={expanded === key ? ragQuery : ''}
+                          onChange={(e) => setRagQuery(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && onRagSearch(n)}
+                        />
+                        <button
+                          type="button"
+                          disabled={ragLoading}
+                          onClick={() => onRagSearch(n)}
+                          className="px-2 py-1 border border-dark-border rounded text-gray-300 disabled:opacity-50"
+                        >
+                          {ragLoading ? '…' : '检索'}
+                        </button>
+                      </div>
+                      {ragChunks.length > 0 && (
+                        <ul className="space-y-1 max-h-32 overflow-y-auto">
+                          {ragChunks.map((ch) => (
+                            <li key={ch.id} className="bg-dark-bg p-2 rounded text-gray-400">
+                              <span className="text-gray-500">[{ch.source}] </span>
+                              {ch.text.length > 120 ? `${ch.text.slice(0, 120)}…` : ch.text}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                   )}
                   <p className="text-gray-600">创建: {n.created_at}</p>
                 </div>
@@ -291,6 +395,66 @@ export function NovelLibraryPage() {
               className="px-4 py-2 bg-primary rounded-lg text-sm font-medium disabled:opacity-50"
             >
               {creating ? '创建中…' : '开始生成'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={showImport} onClose={() => setShowImport(false)} title="导入小说并拆书">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-400">
+            粘贴已有小说全文，系统将自动拆章、AI 拆书提取人物与梗概，构建 RAG 索引，并可续写后续章节。
+          </p>
+          <label className="block text-sm">
+            <span className="text-gray-400">书名（可选）</span>
+            <input
+              className="mt-1 w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2"
+              value={importForm.title}
+              onChange={(e) => setImportForm((f) => ({ ...f, title: e.target.value }))}
+              placeholder="导入小说"
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="text-gray-400">小说全文 *</span>
+            <textarea
+              className="mt-1 w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 min-h-[200px] font-mono text-xs"
+              value={importForm.text}
+              onChange={(e) => setImportForm((f) => ({ ...f, text: e.target.value }))}
+              placeholder={'第1章 标题\n正文…\n\n第2章 标题\n正文…'}
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="text-gray-400">续写说明（可选）</span>
+            <textarea
+              className="mt-1 w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 min-h-[80px]"
+              value={importForm.prompt}
+              onChange={(e) => setImportForm((f) => ({ ...f, prompt: e.target.value }))}
+              placeholder="拆书后希望如何续写、改写方向……"
+            />
+          </label>
+          <label className="flex items-center gap-2 text-sm text-gray-400">
+            <input
+              type="checkbox"
+              checked={importForm.continue_writing}
+              onChange={(e) => setImportForm((f) => ({ ...f, continue_writing: e.target.checked }))}
+            />
+            拆书完成后自动续写（三阶段：剧情 → 正文）
+          </label>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setShowImport(false)}
+              className="px-4 py-2 border border-dark-border rounded-lg text-sm"
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              disabled={importing || !importForm.text.trim()}
+              onClick={submitImport}
+              className="px-4 py-2 bg-primary rounded-lg text-sm font-medium disabled:opacity-50"
+            >
+              {importing ? '导入中…' : '开始拆书'}
             </button>
           </div>
         </div>

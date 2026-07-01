@@ -3,7 +3,9 @@ import type {
   ChatResponseData,
   ConversationData,
   CreateNovelPayload,
+  ImportNovelPayload,
   NovelSummary,
+  RAGSearchResult,
   PendingTask,
   PendingWorkflow,
   TaskSummary,
@@ -45,6 +47,25 @@ export async function createNovel(payload: CreateNovelPayload): Promise<NovelSum
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
+}
+
+export async function importNovel(payload: ImportNovelPayload): Promise<NovelSummary> {
+  return request<NovelSummary>('/novels/import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function searchNovelRAG(
+  namespace: string,
+  name: string,
+  query: string,
+): Promise<RAGSearchResult> {
+  const q = encodeURIComponent(query);
+  return request<RAGSearchResult>(
+    `/novels/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}/rag/search?q=${q}`,
+  );
 }
 
 export async function resumeNovel(namespace: string, name: string): Promise<void> {
