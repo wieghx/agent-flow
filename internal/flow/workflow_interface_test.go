@@ -69,8 +69,8 @@ func TestNewWorkflowCRD(t *testing.T) {
 	if wf.Spec.Template != "novel-team-chapters" {
 		t.Fatalf("unexpected spec template: %s", wf.Spec.Template)
 	}
-	if len(wf.Spec.Steps) != 5 {
-		t.Fatalf("expected 5 steps (outline+refine+bible+chapters+merge), got %d", len(wf.Spec.Steps))
+	if len(wf.Spec.Steps) != 6 {
+		t.Fatalf("expected 6 steps (outline+refine+bible+plots+chapters+merge), got %d", len(wf.Spec.Steps))
 	}
 	if wf.Labels["agentflow.io/source"] != "chat" {
 		t.Fatalf("expected chat source label")

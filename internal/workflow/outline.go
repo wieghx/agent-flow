@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	agentflowiov1alpha1 "agent-flow/api/v1alpha1"
 )
 
 // ChapterOutline is one chapter entry in outline.json.
@@ -98,7 +100,7 @@ func ChapterEnding(content string, maxLen int) string {
 }
 
 // BuildChapterInstruction renders a foreach chapter prompt.
-func BuildChapterInstruction(base string, outline *NovelOutline, chapter ChapterOutline, context ContextBundle, wordsPerChapter int, bible *StyleBible) string {
+func BuildChapterInstruction(wf *agentflowiov1alpha1.Workflow, base string, outline *NovelOutline, chapter ChapterOutline, context ContextBundle, wordsPerChapter int, bible *StyleBible, width int) string {
 	var b strings.Builder
 	if block := FormatStyleBibleBlock(bible); block != "" {
 		b.WriteString(block)
@@ -115,6 +117,18 @@ func BuildChapterInstruction(base string, outline *NovelOutline, chapter Chapter
 	}
 	fmt.Fprintf(&b, "\n当前章节: 第%d章《%s》\n", chapter.Num, chapter.Title)
 	fmt.Fprintf(&b, "本章梗概: %s\n", chapter.Summary)
+	if wf != nil && ThreeStageEnabled(wf.Spec.Params) {
+		if plot := ReadChapterPlot(wf, chapter.Num, width); plot != "" {
+			b.WriteString("\n本章剧情脚本（据此写正文，不得偏离）:\n")
+			b.WriteString(plot)
+			b.WriteString("\n")
+		}
+	}
+	if block := BuildRAGContextBlock(wf, outline.Title, chapter.Summary); block != "" {
+		b.WriteString("\n")
+		b.WriteString(block)
+		b.WriteString("\n")
+	}
 	if context.ArcSummaries != "" {
 		b.WriteString("\n已完成故事弧摘要:\n")
 		b.WriteString(context.ArcSummaries)

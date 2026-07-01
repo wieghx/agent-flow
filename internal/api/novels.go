@@ -41,6 +41,17 @@ type NovelSummary struct {
 	CompletionAt    string            `json:"completion_at,omitempty"`
 }
 
+// ImportNovelRequest imports an existing novel text and runs 拆书 + optional续写.
+type ImportNovelRequest struct {
+	Name             string            `json:"name"`
+	Namespace        string            `json:"namespace"`
+	Title            string            `json:"title"`
+	Prompt           string            `json:"prompt"`
+	Text             string            `json:"text"`
+	ContinueWriting  bool              `json:"continue_writing"`
+	Params           map[string]string `json:"params"`
+}
+
 // CreateNovelRequest creates a novel workflow from the library UI.
 type CreateNovelRequest struct {
 	Name            string            `json:"name"`
@@ -86,6 +97,8 @@ func (a *API) handleNovelRoutes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch {
+	case action == "rag" && len(parts) >= 4 && parts[3] == "search" && r.Method == http.MethodGet:
+		a.handleNovelRAGSearch(w, r, namespace, name)
 	case action == "resume" && r.Method == http.MethodPost:
 		a.handleNovelResume(w, r, namespace, name)
 	case action == "" && r.Method == http.MethodGet:
@@ -166,6 +179,70 @@ func (a *API) handleCreateNovel(w http.ResponseWriter, r *http.Request) {
 	}
 	summary := a.buildSummaryFromWorkflow(wf, nil)
 	writeJSON(w, Response{Success: true, Message: "Novel workflow created", Data: summary})
+}
+
+func (a *API) handleImportNovel(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var req ImportNovelRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, Response{Success: false, Error: err.Error()})
+		return
+	}
+	text := strings.TrimSpace(req.Text)
+	if text == "" {
+		writeJSON(w, Response{Success: false, Error: "text is required"})
+		return
+	}
+	namespace := req.Namespace
+	if namespace == "" {
+		namespace = "default"
+	}
+	chapters, err := wfengine.ParseImportedNovel(text)
+	if err != nil {
+		writeJSON(w, Response{Success: false, Error: err.Error()})
+		return
+	}
+	title := strings.TrimSpace(req.Title)
+	if title == "" {
+		title = "导入小说"
+	}
+	params := wfengine.ImportNovelParams(len(chapters), title)
+	if !req.ContinueWriting {
+		params["continueWriting"] = "false"
+	}
+	params = wfengine.MergeParams(params, req.Params)
+
+	prompt := strings.TrimSpace(req.Prompt)
+	if prompt == "" {
+		prompt = fmt.Sprintf("导入并拆书：《%s》，共 %d 章", title, len(chapters))
+	}
+	wfName := strings.TrimSpace(req.Name)
+	if wfName == "" {
+		wfName = flow.ProposeWorkflowName(title)
+	}
+
+	wf, err := flow.NewWorkflowCRD("novel-import-deconstruct", prompt, params, wfName, namespace)
+	if err != nil {
+		writeJSON(w, Response{Success: false, Error: err.Error()})
+		return
+	}
+	if err := a.client.Create(r.Context(), wf); err != nil {
+		writeJSON(w, Response{Success: false, Error: err.Error()})
+		return
+	}
+	if err := wfengine.EnsureWorkspace(wf); err != nil {
+		writeJSON(w, Response{Success: false, Error: err.Error()})
+		return
+	}
+	if _, err := wfengine.WriteImportedNovel(wf, text, title); err != nil {
+		writeJSON(w, Response{Success: false, Error: err.Error()})
+		return
+	}
+	summary := a.buildSummaryFromWorkflow(wf, nil)
+	writeJSON(w, Response{Success: true, Message: "Import workflow created", Data: summary})
 }
 
 func (a *API) handleNovelResume(w http.ResponseWriter, r *http.Request, namespace, name string) {

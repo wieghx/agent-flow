@@ -26,7 +26,7 @@ func WorkspacePath(wf *agentflowiov1alpha1.Workflow) string {
 // EnsureWorkspace creates workflow workspace directories.
 func EnsureWorkspace(wf *agentflowiov1alpha1.Workflow) error {
 	root := WorkspacePath(wf)
-	for _, sub := range []string{"chapters", "volumes", "arcs"} {
+	for _, sub := range []string{"chapters", "volumes", "arcs", "imports", "imports/chapters", "rag"} {
 		if err := os.MkdirAll(filepath.Join(root, sub), 0755); err != nil {
 			return err
 		}

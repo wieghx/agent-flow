@@ -298,6 +298,12 @@ func buildWorkerSystemPromptFor(instruction, monitorTaskType string) string {
 3. JSON 必须含 title、synopsis、characters、chapters 字段且可被解析
 4. 重点改进：主线完整性、冲突递进、人物弧光、节奏收束、伏笔回收；不得删减或合并章节
 5. 直接以 { 开头、以 } 结尾`
+	case TaskTypeNovelPlot:
+		return `你是小说剧情编剧。根据梗概扩写剧情脚本，只输出剧情脚本文本。
+要求：
+1. 不要输出思考过程或 markdown 代码块
+2. 包含场景节拍、冲突、对话要点、衔接与悬念
+3. 不要写成完整散文正文`
 	case TaskTypeNovelOutlineSkeleton:
 		return `你是小说策划编辑。根据指令生成长篇分卷骨架，严格只输出一个 JSON 对象。
 要求：

@@ -48,8 +48,13 @@ func ChapterSummaryFileName(num, width int) string {
 
 // ParseChapterFileNum extracts chapter number from chapter-003.md style names.
 func ParseChapterFileNum(name string) (int, bool) {
-	base := strings.TrimSuffix(name, ".md")
-	base = strings.TrimSuffix(base, ".summary")
+	base := name
+	for _, suf := range []string{".plot.md", ".summary", ".md"} {
+		if strings.HasSuffix(base, suf) {
+			base = strings.TrimSuffix(base, suf)
+			break
+		}
+	}
 	if !strings.HasPrefix(base, "chapter-") {
 		return 0, false
 	}

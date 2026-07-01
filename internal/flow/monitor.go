@@ -24,6 +24,7 @@ const (
 	TaskTypeNovelOutlineSkeleton = "novel-outline-skeleton"
 	TaskTypeNovelStyleBible      = "novel-style-bible"
 	TaskTypeNovelVolumeOutline   = "novel-volume-outline"
+	TaskTypeNovelPlot            = "novel-plot"
 
 	CheckMethodRule   = "rule"
 	CheckMethodAI     = "ai"
@@ -131,6 +132,8 @@ func RunRuleChecks(instruction, output, taskType string) *EvalResult {
 		score, issues = evaluateNovelSkeletonRules(instruction, trimmed, issues, score)
 	case TaskTypeNovelStyleBible:
 		score, issues = evaluateNovelStyleBibleRules(trimmed, issues, score)
+	case TaskTypeNovelPlot:
+		score, issues = evaluateNovelPlotRules(instruction, trimmed, issues, score)
 	case TaskTypeNovelChapter, TaskTypeNovelChapterTeam:
 		score, issues = evaluateNovelChapterRules(instruction, trimmed, issues, score)
 		if taskType == TaskTypeNovelChapterTeam {
@@ -288,6 +291,39 @@ func evaluateNovelSkeletonRules(instruction, output string, issues []string, sco
 	return score, issues
 }
 
+func evaluateNovelPlotRules(instruction, output string, issues []string, score int) (int, []string) {
+	runes := len([]rune(strings.TrimSpace(output)))
+	target := wfengine.PlotWordsTarget(map[string]string{})
+	if m := regexp.MustCompile(`目标.*?(\d+)\s*字`).FindStringSubmatch(instruction); len(m) == 2 {
+		if n, err := strconv.Atoi(m[1]); err == nil && n > 0 {
+			target = n
+		}
+	}
+	minLen := target / 3
+	if minLen < 200 {
+		minLen = 200
+	}
+	if runes < minLen {
+		issues = append(issues, "plot_too_short")
+		score -= 25
+	}
+	sceneMarkers := []string{"场景", "节拍", "冲突", "对话", "转折"}
+	found := 0
+	for _, m := range sceneMarkers {
+		if strings.Contains(output, m) {
+			found++
+		}
+	}
+	if found < 2 {
+		issues = append(issues, "missing_scene_structure")
+		score -= 20
+	}
+	if len(issues) == 0 {
+		return 100, issues
+	}
+	return score, issues
+}
+
 func evaluateGeneralRules(instruction, output string, issues []string, score int) (int, []string) {
 	instrRunes := len([]rune(instruction))
 	outRunes := len([]rune(output))
@@ -351,6 +387,18 @@ func BuildMonitorSystemPrompt(taskType string, threshold int, configPrompt strin
 - 结构 (30分)：含 title、synopsis、characters、volumes 数组，JSON 可解析
 - 覆盖 (40分)：volumes 无重叠无遗漏，startChapter/endChapter 连续覆盖全书章节
 - 故事性 (30分)：各卷主题递进，人物弧光清晰，末卷预留高潮与收束
+
+通过阈值: %d 分
+
+仅返回 JSON：
+{"score": 分数, "passed": true/false, "feedback": "评价", "issues": ["问题"], "dimensions": {"completeness": 分, "accuracy": 分, "quality": 分}}`, threshold)
+	case TaskTypeNovelPlot:
+		return fmt.Sprintf(`你是剧情编剧编辑，审查章节剧情脚本质量。
+
+评分标准（总分 100）：
+- 结构 (35分)：含多个场景节拍，冲突与转折清晰
+- 衔接 (35分)：与上一章衔接自然，落实本章梗概
+- 可执行性 (30分)：对话要点与情绪明确，便于扩写正文
 
 通过阈值: %d 分
 
@@ -503,7 +551,7 @@ func evaluateNovelChapterRules(instruction, output string, issues []string, scor
 // ResolveMonitorTier picks light vs full monitor for workflow chapters.
 func ResolveMonitorTier(taskType string, attempt int, arcBoundary, firstChapter bool) string {
 	switch taskType {
-	case TaskTypeNovelOutline, TaskTypeNovelOutlineRefine, TaskTypeNovelOutlineSkeleton, TaskTypeNovelVolumeOutline, TaskTypeNovelStyleBible:
+	case TaskTypeNovelOutline, TaskTypeNovelOutlineRefine, TaskTypeNovelOutlineSkeleton, TaskTypeNovelPlot, TaskTypeNovelVolumeOutline, TaskTypeNovelStyleBible:
 		return MonitorTierFull
 	case TaskTypeNovelChapter, TaskTypeNovelChapterTeam:
 		if attempt >= 1 || arcBoundary || firstChapter {

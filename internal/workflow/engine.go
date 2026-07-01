@@ -82,29 +82,42 @@ func expandForeach(wf *agentflowiov1alpha1.Workflow, step agentflowiov1alpha1.Wo
 	arcInterval := DefaultArcInterval(wf.Spec.Params, len(outline.Chapters))
 	maxChapter := outline.Chapters[len(outline.Chapters)-1].Num
 
+	isPlot := prefix == "plot"
 	var items []ResolvedStep
 	for _, ch := range outline.Chapters {
 		ctxBundle := BuildChapterContext(wf, ch.Num, width, contextWindow)
 		bible, _ := LoadStyleBible(wf)
-		instruction := BuildChapterInstruction(step.Foreach.Instruction, outline, ch, ctxBundle, words, bible)
+		var instruction string
+		if isPlot {
+			instruction = BuildPlotInstruction(wf, step.Foreach.Instruction, outline, ch, ctxBundle, wf.Spec.Params, bible)
+		} else {
+			instruction = BuildChapterInstruction(wf, step.Foreach.Instruction, outline, ch, ctxBundle, words, bible, width)
+		}
 		if block := ResearchContextBlock(wf); block != "" {
 			instruction += block
 		}
-		if SegmentModeEnabled(wf.Spec.Params, words) {
+		if !isPlot && SegmentModeEnabled(wf.Spec.Params, words) {
 			instruction = AppendSegmentDirectives(instruction, SegmentCount(wf.Spec.Params, words), SegmentWordsPerPart(wf.Spec.Params, words))
 		}
 		outputPath := strings.ReplaceAll(step.Foreach.OutputPath, "{{num}}", fmt.Sprintf("%0*d", width, ch.Num))
 		taskSpec := step.TaskSpec
 		taskSpec.WorkerInstruction = instruction
+		name := fmt.Sprintf("第%d章 %s", ch.Num, ch.Title)
+		if isPlot {
+			name = fmt.Sprintf("第%d章剧情 %s", ch.Num, ch.Title)
+		}
 		items = append(items, ResolvedStep{
 			ID:         ChapterStepID(prefix, ch.Num, width),
-			Name:       fmt.Sprintf("第%d章 %s", ch.Num, ch.Title),
+			Name:       name,
 			Type:       agentflowiov1alpha1.WorkflowStepTypeAITask,
 			TaskSpec:   taskSpec,
 			OutputPath: outputPath,
 			ChapterNum: ch.Num,
 		})
 
+		if isPlot {
+			continue
+		}
 		if arcInterval > 0 && ch.Num%arcInterval == 0 && ch.Num < maxChapter {
 			start, end := ArcRange(ch.Num, arcInterval)
 			items = append(items, ResolvedStep{
@@ -308,8 +321,27 @@ func dependenciesMet(wf *agentflowiov1alpha1.Workflow, stepID string, deps map[s
 		return completed[ChapterStepID("chapter", arcEnd, width)]
 	}
 
+	if num, ok := PlotNumFromStepID(stepID); ok {
+		width := chapterDependencyWidth(wf)
+		if num > 1 {
+			gate := chapterGateNum(wf, num)
+			if gate > 0 {
+				return completed[ChapterStepID("plot", gate, width)]
+			}
+		}
+		for _, dep := range deps["plot"] {
+			if !completed[dep] {
+				return false
+			}
+		}
+		return true
+	}
+
 	if num, ok := ChapterNumFromStepID(stepID); ok {
 		width := chapterDependencyWidth(wf)
+		if PlotsStageActive(wf) && !completed[ChapterStepID("plot", num, width)] {
+			return false
+		}
 		if num > 1 {
 			prev := num - 1
 			interval := DefaultArcInterval(wf.Spec.Params, OutlineChapterCount(wf))
@@ -322,6 +354,9 @@ func dependenciesMet(wf *agentflowiov1alpha1.Workflow, stepID string, deps map[s
 			}
 		}
 		for _, dep := range deps["chapter"] {
+			if dep == "plots" {
+				continue
+			}
 			if !completed[dep] {
 				return false
 			}

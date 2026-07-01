@@ -332,6 +332,12 @@ func (c *WorkflowController) runLocalMergeStep(ctx context.Context, wf *agentflo
 	case "outline-merge":
 		content, err = wfengine.MergeVolumeOutlines(wf)
 		message = "outline merged locally"
+	case "import-rag-index":
+		if _, err = wfengine.RebuildRAGIndex(wf); err != nil {
+			return err
+		}
+		content = `{"status":"ok"}`
+		message = "rag index rebuilt"
 	default:
 		content, err = wfengine.MergeChapterFiles(wf)
 	}

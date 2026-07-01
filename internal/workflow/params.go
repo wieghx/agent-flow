@@ -31,6 +31,10 @@ func DefaultNovelParams(chapterCount int) map[string]string {
 		"stepRetryBaseDelaySec":  "30",
 		"stepRetryMaxDelaySec":   "300",
 		"pauseOnStepFail":        "false",
+		"threeStage":             "true",
+		"ragEnabled":             "true",
+		"ragTopK":                "5",
+		"plotWords":              "1000",
 	}
 }
 

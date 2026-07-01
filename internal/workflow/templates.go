@@ -13,6 +13,8 @@ func BuildSpecFromTemplate(template string, prompt string, params map[string]str
 	switch template {
 	case "", "novel-outline-chapters", "novel-team-chapters", "novel-team-historical":
 		return novelProductionSpec(prompt, params, template), nil
+	case "novel-import-deconstruct":
+		return importDeconstructSpec(prompt, params), nil
 	default:
 		return agentflowiov1alpha1.WorkflowSpec{}, fmt.Errorf("unknown workflow template: %s", template)
 	}
@@ -99,12 +101,37 @@ func novelProductionSpec(prompt string, params map[string]string, template strin
 	}
 
 	outlineDep := "outline-refine"
+	if BoolParam(params, "importedNovel", false) {
+		outlineDep = "import-rag-index"
+	}
+	threeStage := ThreeStageEnabled(params)
+
+	var plotStep agentflowiov1alpha1.WorkflowStep
+	if threeStage {
+		plotStep = agentflowiov1alpha1.WorkflowStep{
+			ID:        "plots",
+			Name:      "逐章扩写剧情",
+			Type:      agentflowiov1alpha1.WorkflowStepTypeForeach,
+			DependsOn: plotForeachDependsOn(outlineDep),
+			Foreach: &agentflowiov1alpha1.WorkflowForeach{
+				Source:       "outline.json",
+				JSONPath:     "chapters",
+				StepIDPrefix: "plot",
+				OutputPath:   "chapters/chapter-{{num}}.plot.md",
+				Instruction:  plotForeachInstruction(params),
+			},
+			TaskSpec: agentflowiov1alpha1.WorkflowTaskSpec{
+				QualityThreshold: quality,
+				MonitorTaskType:  "novel-plot",
+			},
+		}
+	}
 
 	chaptersStep := agentflowiov1alpha1.WorkflowStep{
 		ID:        "chapters",
 		Name:      "逐章生成正文",
 		Type:      agentflowiov1alpha1.WorkflowStepTypeForeach,
-		DependsOn: chapterForeachDependsOn(team, outlineDep),
+		DependsOn: proseForeachDependsOn(team, threeStage),
 		Foreach: &agentflowiov1alpha1.WorkflowForeach{
 			Source:       "outline.json",
 			JSONPath:     "chapters",
@@ -145,7 +172,7 @@ func novelProductionSpec(prompt string, params map[string]string, template strin
 		if team {
 			spec.Steps = append(spec.Steps, styleBibleStep(prompt, []string{"outline-refine"}, quality))
 		}
-	} else {
+	} else if !BoolParam(params, "importedNovel", false) {
 		if research {
 			spec.Steps = append(spec.Steps, historicalResearchStep(quality))
 		}
@@ -161,8 +188,13 @@ func novelProductionSpec(prompt string, params map[string]string, template strin
 		if team {
 			spec.Steps = append(spec.Steps, styleBibleStep(prompt, []string{"outline-refine"}, quality))
 		}
+	} else if team {
+		spec.Steps = append(spec.Steps, styleBibleStep(prompt, []string{outlineDep}, quality))
 	}
 
+	if threeStage {
+		spec.Steps = append(spec.Steps, plotStep)
+	}
 	spec.Steps = append(spec.Steps, chaptersStep, mergeStep)
 	return spec
 }

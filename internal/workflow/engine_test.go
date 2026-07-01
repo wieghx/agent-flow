@@ -24,8 +24,8 @@ func TestResolveStepsRequiresOutlineArtifact(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveSteps failed before outline: %v", err)
 	}
-	if len(steps) != 3 || steps[0].ID != "outline" || steps[1].ID != "outline-refine" || steps[2].ID != "merge" {
-		t.Fatalf("expected outline+refine+merge before chapters expand, got %#v", steps)
+	if len(steps) != 3 {
+		t.Fatalf("expected outline+refine+merge before foreach expand, got %d: %#v", len(steps), steps)
 	}
 }
 
@@ -51,17 +51,14 @@ func TestResolveStepsExpandsChaptersAfterOutline(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveSteps failed: %v", err)
 	}
-	if len(steps) != 5 {
-		t.Fatalf("expected outline + refine + 2 chapters + merge, got %d steps", len(steps))
+	if len(steps) != 7 {
+		t.Fatalf("expected outline+refine+2 plots+2 chapters+merge, got %d steps", len(steps))
 	}
-	if steps[0].ID != "outline" {
-		t.Fatalf("first step should be outline, got %s", steps[0].ID)
+	if steps[0].ID != "outline" || steps[1].ID != "outline-refine" {
+		t.Fatalf("unexpected prefix: %s %s", steps[0].ID, steps[1].ID)
 	}
-	if steps[1].ID != "outline-refine" {
-		t.Fatalf("second step should be outline-refine, got %s", steps[1].ID)
-	}
-	if steps[4].ID != "merge" {
-		t.Fatalf("last step should be merge, got %s", steps[4].ID)
+	if steps[2].ID != "plot-01" || steps[4].ID != "chapter-01" || steps[6].ID != "merge" {
+		t.Fatalf("unexpected expanded ids: %#v", []string{steps[2].ID, steps[4].ID, steps[6].ID})
 	}
 }
 
@@ -118,13 +115,15 @@ func TestNextStepChapter002AfterChapter001Padded100(t *testing.T) {
 			Params: map[string]string{
 				"chapterCount": "100",
 				"volumeSize":   "25",
+				"teamMode":     "false",
 			},
 		},
 		Status: agentflowiov1alpha1.WorkflowStatus{
 			WorkspacePath: root,
 			CompletedSteps: []string{
 				"outline-skeleton", "outline-vol-01", "outline-vol-02",
-				"outline-vol-03", "outline-vol-04", "outline-merge", "chapter-001",
+				"outline-vol-03", "outline-vol-04", "outline-merge", "outline-refine",
+				"plot-001", "chapter-001",
 			},
 		},
 	}
@@ -149,8 +148,8 @@ func TestNextStepChapter002AfterChapter001Padded100(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NextStep failed: %v", err)
 	}
-	if next == nil || next.ID != "chapter-002" {
-		t.Fatalf("expected chapter-002 after chapter-001 with width 3, got %#v", next)
+	if next == nil || next.ID != "plot-002" {
+		t.Fatalf("expected plot-002 after chapter-001 with three-stage pipeline, got %#v", next)
 	}
 }
 
@@ -230,7 +229,7 @@ func TestReadyStepsPipelineChaptersBatch(t *testing.T) {
 		},
 		Status: agentflowiov1alpha1.WorkflowStatus{
 			WorkspacePath:  root,
-			CompletedSteps: []string{"outline", "outline-refine"},
+			CompletedSteps: []string{"outline", "outline-refine", "plot-01", "plot-02", "plot-03", "plot-04"},
 		},
 	}
 	var ob strings.Builder
@@ -255,16 +254,24 @@ func TestReadyStepsPipelineChaptersBatch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadySteps failed: %v", err)
 	}
-	if len(ready) != 4 {
-		t.Fatalf("expected first pipeline batch of 4 chapters, got %d: %#v", len(ready), stepIDs(ready))
+	if len(ready) != 8 {
+		t.Fatalf("expected 4 chapters + 4 plots in pipeline batch, got %d: %#v", len(ready), stepIDs(ready))
 	}
 	for i, id := range []string{"chapter-01", "chapter-02", "chapter-03", "chapter-04"} {
 		if ready[i].ID != id {
 			t.Fatalf("ready[%d] = %s, want %s", i, ready[i].ID, id)
 		}
 	}
+	for i, id := range []string{"plot-05", "plot-06", "plot-07", "plot-08"} {
+		if ready[i+4].ID != id {
+			t.Fatalf("ready[%d] = %s, want %s", i+4, ready[i+4].ID, id)
+		}
+	}
 
-	wf.Status.CompletedSteps = append(wf.Status.CompletedSteps, "chapter-01", "chapter-02", "chapter-03", "chapter-04")
+	wf.Status.CompletedSteps = append(wf.Status.CompletedSteps,
+		"chapter-01", "chapter-02", "chapter-03", "chapter-04",
+		"plot-05", "plot-06", "plot-07", "plot-08",
+	)
 	ready, err = ReadySteps(wf, resolved)
 	if err != nil {
 		t.Fatalf("ReadySteps batch2 failed: %v", err)

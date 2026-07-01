@@ -129,8 +129,8 @@ func TestVolumeOutlineSpecSteps(t *testing.T) {
 	if !foundRefine {
 		t.Fatal("expected outline-refine step")
 	}
-	if chaptersDep != "outline-refine" {
-		t.Fatalf("chapters should depend on outline-refine, got %q", chaptersDep)
+	if chaptersDep != "plots" {
+		t.Fatalf("chapters should depend on plots with three-stage default, got %q", chaptersDep)
 	}
 	for _, step := range spec.Steps {
 		if step.ID == "outline-vol-01" {

@@ -78,6 +78,7 @@ func (a *API) setupRoutes() {
 	a.mux.HandleFunc("/workflows/", a.handleWorkflowDetail)
 	a.mux.HandleFunc("/workflows", a.handleWorkflows)
 	a.mux.HandleFunc("/novels/create", a.handleCreateNovel)
+	a.mux.HandleFunc("/novels/import", a.handleImportNovel)
 	a.mux.HandleFunc("/novels/", a.handleNovelRoutes)
 	a.mux.HandleFunc("/novels", a.handleNovelList)
 	a.mux.HandleFunc("/outputs/", a.handleOutputFile)
