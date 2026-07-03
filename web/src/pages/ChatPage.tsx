@@ -1,6 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { fetchConversation, sendChat } from '@/api/client';
+import { CollapsibleText } from '@/components/CollapsibleText';
 import type { ConversationMessage } from '@/types/api';
+
+const VISIBLE_MESSAGE_LIMIT = 30;
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -37,8 +40,17 @@ export function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [showAllHistory, setShowAllHistory] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastUpdatedRef = useRef('');
+
+  const hiddenCount = messages.length > VISIBLE_MESSAGE_LIMIT && !showAllHistory
+    ? messages.length - VISIBLE_MESSAGE_LIMIT
+    : 0;
+  const visibleMessages = useMemo(
+    () => (hiddenCount > 0 ? messages.slice(-VISIBLE_MESSAGE_LIMIT) : messages),
+    [messages, hiddenCount],
+  );
 
   const syncFromServer = async () => {
     const conv = await fetchConversation();
@@ -102,29 +114,46 @@ export function ChatPage() {
             试试：「帮我写一本 100 章的荒岛生存小说」
           </p>
         )}
-        {messages.map((msg, i) => (
-          <div
-            key={`${msg.role}-${i}`}
-            className={`animate-fade-in flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
+        {hiddenCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowAllHistory(true)}
+            className="w-full py-2 text-sm text-gray-400 border border-dashed border-dark-border rounded-xl hover:text-white hover:border-gray-500 transition-colors"
           >
+            显示更早的 {hiddenCount} 条消息
+          </button>
+        )}
+        {visibleMessages.map((msg, i) => {
+          const globalIndex = hiddenCount > 0 ? messages.length - visibleMessages.length + i : i;
+          const isLatest = globalIndex === messages.length - 1;
+          return (
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                msg.role === 'user' ? 'bg-primary' : msg.role === 'assistant' ? 'bg-green-600' : 'bg-gray-600'
-              }`}
+              key={`${msg.role}-${globalIndex}`}
+              className={`animate-fade-in flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
             >
-              {msg.role === 'user' ? '👤' : msg.role === 'assistant' ? '🧠' : 'ℹ️'}
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                  msg.role === 'user' ? 'bg-primary' : msg.role === 'assistant' ? 'bg-green-600' : 'bg-gray-600'
+                }`}
+              >
+                {msg.role === 'user' ? '👤' : msg.role === 'assistant' ? '🧠' : 'ℹ️'}
+              </div>
+              <div
+                className={`rounded-xl px-4 py-3 max-w-[85%] whitespace-pre-wrap ${
+                  msg.role === 'user'
+                    ? 'bg-primary'
+                    : 'bg-dark-card border border-dark-border text-gray-100'
+                }`}
+              >
+                <CollapsibleText
+                  text={msg.content}
+                  expandedByDefault={isLatest}
+                  variant={msg.role === 'user' ? 'primary' : 'card'}
+                />
+              </div>
             </div>
-            <div
-              className={`rounded-xl px-4 py-3 max-w-[85%] whitespace-pre-wrap ${
-                msg.role === 'user'
-                  ? 'bg-primary'
-                  : 'bg-dark-card border border-dark-border text-gray-100'
-              }`}
-            >
-              {msg.content}
-            </div>
-          </div>
-        ))}
+          );
+        })}
         <div ref={bottomRef} />
       </div>
       <div className="flex gap-3">

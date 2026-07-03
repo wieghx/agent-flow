@@ -188,3 +188,28 @@ func TestRunRuleChecksNovelOutline(t *testing.T) {
 		t.Fatalf("invalid JSON should fail, got %+v", result)
 	}
 }
+
+func TestTryRuleOnlyJSONBypassOutlineRefine(t *testing.T) {
+	valid := `{"title":"星尘纪元","synopsis":"简介","characters":[{"name":"林澈"}],"chapters":[{"num":1,"title":"章1","summary":"s1"}]}`
+	rule := RunRuleChecks("审查并改进大纲", valid, TaskTypeNovelOutlineRefine)
+	if rule.Score < 75 {
+		t.Fatalf("rule score too low: %+v", rule)
+	}
+	got, ok := tryRuleOnlyJSONBypass(TaskTypeNovelOutlineRefine, valid, "审查并改进大纲", rule, 75)
+	if !ok || got == nil || !got.Passed {
+		t.Fatalf("expected rule-only bypass, ok=%v got=%+v", ok, got)
+	}
+	if got.CheckMethod != CheckMethodRule || got.Feedback == "" {
+		t.Fatalf("unexpected bypass result: %+v", got)
+	}
+}
+
+func TestTryRuleOnlyJSONBypassSkeleton(t *testing.T) {
+	instruction := "全书共 2 章，分为 1 卷"
+	valid := `{"title":"书","synopsis":"简介","characters":[],"volumes":[{"num":1,"title":"卷1","startChapter":1,"endChapter":2,"theme":"t","summary":"s"}]}`
+	rule := RunRuleChecks(instruction, valid, TaskTypeNovelOutlineSkeleton)
+	got, ok := tryRuleOnlyJSONBypass(TaskTypeNovelOutlineSkeleton, valid, instruction, rule, 70)
+	if !ok || got == nil || !got.Passed {
+		t.Fatalf("expected skeleton bypass, ok=%v got=%+v", ok, got)
+	}
+}

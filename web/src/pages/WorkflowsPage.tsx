@@ -1,11 +1,23 @@
 import { Link } from 'react-router-dom';
 import { fetchWorkflows } from '@/api/client';
 import { usePolling } from '@/hooks/usePolling';
+import { usePagination } from '@/hooks/usePagination';
 import { PhaseBadge } from '@/components/PhaseBadge';
+import { Pagination } from '@/components/Pagination';
 import { formatWorkflowStep } from '@/lib/pipeline';
 
 export function WorkflowsPage() {
   const { data: workflows = [], refresh, error } = usePolling(fetchWorkflows, 10000);
+
+  const {
+    paginatedItems: pagedWorkflows,
+    page,
+    setPage,
+    totalPages,
+    totalItems,
+    rangeStart,
+    rangeEnd,
+  } = usePagination(workflows, { pageSize: 10 });
 
   return (
     <div className="p-5 max-w-6xl mx-auto space-y-4">
@@ -17,8 +29,18 @@ export function WorkflowsPage() {
       </div>
       {error && <p className="text-red-400 text-sm">{error}</p>}
       {workflows.length === 0 && <p className="text-center text-gray-500 py-16">暂无工作流</p>}
+      {workflows.length > 0 && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          onPageChange={setPage}
+        />
+      )}
       <div className="space-y-3">
-        {workflows.map((wf) => (
+        {pagedWorkflows.map((wf) => (
           <div key={`${wf.namespace}/${wf.name}`} className="bg-dark-card border border-dark-border rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="font-medium">{wf.name}</span>
@@ -44,6 +66,16 @@ export function WorkflowsPage() {
           </div>
         ))}
       </div>
+      {workflows.length > 0 && totalPages > 1 && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   );
 }

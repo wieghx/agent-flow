@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Pagination } from '@/components/Pagination';
+import { usePagination } from '@/hooks/usePagination';
 import {
   createNovel,
   deleteNovel,
@@ -42,6 +44,16 @@ export function NovelLibraryPage() {
   const [ragQuery, setRagQuery] = useState('');
   const [ragChunks, setRagChunks] = useState<RAGChunk[]>([]);
   const [ragLoading, setRagLoading] = useState(false);
+
+  const {
+    paginatedItems: pagedNovels,
+    page,
+    setPage,
+    totalPages,
+    totalItems,
+    rangeStart,
+    rangeEnd,
+  } = usePagination(novels, { pageSize: 6 });
 
   const displayTitle = (n: NovelSummary) =>
     n.title?.trim() || n.name;
@@ -173,8 +185,19 @@ export function NovelLibraryPage() {
         </div>
       )}
 
+      {novels.length > 0 && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          onPageChange={setPage}
+        />
+      )}
+
       <div className="grid gap-4 md:grid-cols-2">
-        {novels.map((n) => {
+        {pagedNovels.map((n) => {
           const key = `${n.namespace}/${n.name}`;
           const isOpen = expanded === key;
           const canResume =
@@ -326,6 +349,17 @@ export function NovelLibraryPage() {
           );
         })}
       </div>
+
+      {novels.length > 0 && totalPages > 1 && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          onPageChange={setPage}
+        />
+      )}
 
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title="新建小说">
         <div className="space-y-4">

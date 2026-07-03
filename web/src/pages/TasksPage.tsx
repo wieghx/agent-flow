@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { deleteTask, fetchTasks } from '@/api/client';
 import { usePolling } from '@/hooks/usePolling';
+import { usePagination } from '@/hooks/usePagination';
 import { PhaseBadge } from '@/components/PhaseBadge';
+import { Pagination } from '@/components/Pagination';
 import { Modal } from '@/components/Modal';
 import { chapterMarkdownUrl, taskOutputFileUrl } from '@/lib/paths';
 import type { PhaseFilter, TaskSummary } from '@/types/api';
@@ -16,6 +18,16 @@ export function TasksPage() {
     if (filter === 'all') return tasks;
     return tasks.filter((t) => t.phase === filter);
   }, [tasks, filter]);
+
+  const {
+    paginatedItems: pagedTasks,
+    page,
+    setPage,
+    totalPages,
+    totalItems,
+    rangeStart,
+    rangeEnd,
+  } = usePagination(filtered, { pageSize: 10, resetKey: filter });
 
   return (
     <div className="p-5 max-w-6xl mx-auto space-y-4">
@@ -39,8 +51,19 @@ export function TasksPage() {
 
       {filtered.length === 0 && <p className="text-center text-gray-500 py-16">暂无任务</p>}
 
+      {filtered.length > 0 && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          onPageChange={setPage}
+        />
+      )}
+
       <div className="space-y-3">
-        {filtered.map((task) => {
+        {pagedTasks.map((task) => {
           const chapterUrl = chapterMarkdownUrl(task);
           const outputUrl = taskOutputFileUrl(task);
           return (
@@ -92,6 +115,17 @@ export function TasksPage() {
           );
         })}
       </div>
+
+      {filtered.length > 0 && totalPages > 1 && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          onPageChange={setPage}
+        />
+      )}
 
       <Modal title={`任务 - ${detail?.name || ''}`} open={!!detail} onClose={() => setDetail(null)}>
         {detail && (

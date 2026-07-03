@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Pagination } from '@/components/Pagination';
+import { pageForIndex, usePagination } from '@/hooks/usePagination';
 import {
   fetchNovels,
   fetchTextAsset,
@@ -11,6 +13,8 @@ import { usePolling } from '@/hooks/usePolling';
 import { chapterNumFromStepId, chapterUrlFromStep, outlineUrl } from '@/lib/paths';
 import { PhaseBadge } from '@/components/PhaseBadge';
 import { Modal } from '@/components/Modal';
+
+const CHAPTER_PAGE_SIZE = 15;
 
 export function NovelReaderPage() {
   const params = useParams();
@@ -62,6 +66,16 @@ export function NovelReaderPage() {
     [status?.completedSteps],
   );
 
+  const {
+    paginatedItems: pagedChapters,
+    page: chapterPage,
+    setPage: setChapterPage,
+    totalPages: chapterTotalPages,
+    totalItems: chapterTotalItems,
+    rangeStart: chapterRangeStart,
+    rangeEnd: chapterRangeEnd,
+  } = usePagination(completedChapters, { pageSize: CHAPTER_PAGE_SIZE, resetKey: activeName });
+
   const reloadChapterText = useCallback(() => {
     if (!selectedChapter || !workspace) return;
     const url = chapterUrlFromStep(workspace, selectedChapter);
@@ -84,6 +98,15 @@ export function NovelReaderPage() {
       setSelectedChapter(completedChapters[0]);
     }
   }, [completedChapters, selectedChapter]);
+
+  // Sync list page when selection changes (e.g. URL ?ch=). Do not depend on chapterPage —
+  // otherwise manual pagination is immediately reset to the selected chapter's page.
+  useEffect(() => {
+    if (!selectedChapter) return;
+    const idx = completedChapters.indexOf(selectedChapter);
+    if (idx < 0) return;
+    setChapterPage(pageForIndex(idx, CHAPTER_PAGE_SIZE));
+  }, [selectedChapter, completedChapters, setChapterPage]);
 
   useEffect(() => {
     reloadChapterText();
@@ -121,6 +144,10 @@ export function NovelReaderPage() {
   };
 
   const onSelectChapter = (ch: string) => {
+    const idx = completedChapters.indexOf(ch);
+    if (idx >= 0) {
+      setChapterPage(pageForIndex(idx, CHAPTER_PAGE_SIZE));
+    }
     setSelectedChapter(ch);
     setSearchParams((prev) => {
       prev.set('ch', ch);
@@ -220,8 +247,19 @@ export function NovelReaderPage() {
           <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">
             已完成章节 ({completedChapters.length})
           </h3>
-          <div className="space-y-1 max-h-96 overflow-y-auto">
-            {completedChapters.map((ch) => (
+          {completedChapters.length > 0 && (
+            <Pagination
+              page={chapterPage}
+              totalPages={chapterTotalPages}
+              totalItems={chapterTotalItems}
+              rangeStart={chapterRangeStart}
+              rangeEnd={chapterRangeEnd}
+              onPageChange={setChapterPage}
+              className="mb-2"
+            />
+          )}
+          <div className="space-y-1">
+            {pagedChapters.map((ch) => (
               <button
                 key={ch}
                 type="button"

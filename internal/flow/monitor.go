@@ -130,6 +130,8 @@ func RunRuleChecks(instruction, output, taskType string) *EvalResult {
 		score, issues = evaluateNovelOutlineRules(instruction, trimmed, issues, score)
 	case TaskTypeNovelOutlineSkeleton:
 		score, issues = evaluateNovelSkeletonRules(instruction, trimmed, issues, score)
+	case TaskTypeNovelVolumeOutline:
+		score, issues = evaluateVolumeOutlineRules(instruction, trimmed, issues, score)
 	case TaskTypeNovelStyleBible:
 		score, issues = evaluateNovelStyleBibleRules(trimmed, issues, score)
 	case TaskTypeNovelPlot:
@@ -226,6 +228,35 @@ func evaluateNovelOutlineRules(instruction, output string, issues []string, scor
 	if len([]rune(trimmed)) < 80 {
 		issues = append(issues, "outline_too_short")
 		score -= 20
+		return score, issues
+	}
+	return 100, issues
+}
+
+func evaluateVolumeOutlineRules(instruction, output string, issues []string, score int) (int, []string) {
+	trimmed := strings.TrimSpace(NormalizeWorkerOutput(instruction, output))
+	if !strings.HasPrefix(trimmed, "{") {
+		issues = append(issues, "not_json_object")
+		score -= 40
+		return score, issues
+	}
+	if !strings.Contains(trimmed, `"chapters"`) {
+		issues = append(issues, "missing_chapters_field")
+		score -= 30
+		return score, issues
+	}
+	start, end, ok := wfengine.ParseVolumeChapterRangeFromInstruction(instruction)
+	if !ok {
+		if _, err := wfengine.ParseVolumeOutlineJSON(trimmed); err != nil {
+			issues = append(issues, "invalid_volume_outline_json")
+			score -= 35
+			return score, issues
+		}
+		return 85, issues
+	}
+	if err := wfengine.ValidateVolumeOutline(trimmed, start, end); err != nil {
+		issues = append(issues, "volume_outline_invalid")
+		score -= 30
 		return score, issues
 	}
 	return 100, issues
@@ -580,6 +611,49 @@ func BuildLightMonitorSystemPrompt(threshold int) string {
 {"score": 分数, "passed": true/false, "feedback": "评价", "issues": ["问题"], "dimensions": {"completeness": 分, "accuracy": 分, "quality": 分}}`, threshold)
 }
 
+// tryRuleOnlyJSONBypass skips Monitor AI when structural rule checks already pass for JSON artifacts.
+func tryRuleOnlyJSONBypass(taskType, normalizedOutput, instruction string, ruleResult *EvalResult, threshold int) (*EvalResult, bool) {
+	if ruleResult == nil || len(ruleResult.Issues) > 0 || ruleResult.Score < threshold {
+		return nil, false
+	}
+
+	var feedback string
+	switch taskType {
+	case TaskTypeNovelStyleBible:
+		if _, err := wfengine.ParseStyleBibleJSON(normalizedOutput); err != nil {
+			return nil, false
+		}
+		feedback = "设定圣经 JSON 结构校验通过"
+	case TaskTypeNovelOutlineSkeleton:
+		if _, err := wfengine.ParseSkeletonJSON(normalizedOutput); err != nil {
+			return nil, false
+		}
+		feedback = "分卷骨架 JSON 结构校验通过"
+	case TaskTypeNovelOutline, TaskTypeNovelOutlineRefine:
+		if _, err := wfengine.ParseOutlineJSON(normalizedOutput); err != nil {
+			return nil, false
+		}
+		feedback = "大纲 JSON 结构校验通过"
+	case TaskTypeNovelVolumeOutline:
+		start, end, ok := wfengine.ParseVolumeChapterRangeFromInstruction(instruction)
+		if !ok {
+			if _, err := wfengine.ParseVolumeOutlineJSON(normalizedOutput); err != nil {
+				return nil, false
+			}
+		} else if err := wfengine.ValidateVolumeOutline(normalizedOutput, start, end); err != nil {
+			return nil, false
+		}
+		feedback = "分卷章节大纲 JSON 结构校验通过"
+	default:
+		return nil, false
+	}
+
+	ruleResult.Passed = true
+	ruleResult.CheckMethod = CheckMethodRule
+	ruleResult.Feedback = feedback
+	return ruleResult, true
+}
+
 // RunMonitorEvaluation executes the full monitor pipeline.
 func RunMonitorEvaluation(ctx context.Context, aiSvc *ai.Service, instruction, output string, threshold, attempt int, configPrompt, previousFeedback, taskType, consistencyContext, tier string, teamMode bool) (*EvalResult, error) {
 	if taskType == "" {
@@ -609,16 +683,9 @@ func RunMonitorEvaluation(ctx context.Context, aiSvc *ai.Service, instruction, o
 		return ruleResult, nil
 	}
 
-	// 设定圣经：规则通过即可放行（JSON 结构校验已足够）。章节轻量/全量质检必须走 AI（一致性+文笔）。
-	if len(ruleResult.Issues) == 0 && ruleResult.Score >= threshold {
-		if taskType == TaskTypeNovelStyleBible {
-			if _, err := wfengine.ParseStyleBibleJSON(normalizedOutput); err == nil {
-				ruleResult.Passed = true
-				ruleResult.CheckMethod = CheckMethodRule
-				ruleResult.Feedback = "设定圣经 JSON 结构校验通过"
-				return ruleResult, nil
-			}
-		}
+	// JSON 大纲类步骤：规则预检通过即可放行，避免 Monitor AI 返回非 JSON 评分导致误杀。
+	if bypass, ok := tryRuleOnlyJSONBypass(taskType, normalizedOutput, instruction, ruleResult, threshold); ok {
+		return bypass, nil
 	}
 
 	userInstruction := instruction
