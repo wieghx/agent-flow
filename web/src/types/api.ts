@@ -62,6 +62,19 @@ export interface NovelSummary {
   completion_at?: string;
 }
 
+export interface ChapterOutline {
+  num: number;
+  title: string;
+  summary: string;
+}
+
+export interface NovelOutline {
+  title: string;
+  synopsis: string;
+  characters?: Record<string, unknown>[];
+  chapters: ChapterOutline[];
+}
+
 export interface CreateNovelPayload {
   title?: string;
   prompt?: string;

@@ -14,6 +14,7 @@ import { usePolling } from '@/hooks/usePolling';
 import { PhaseBadge } from '@/components/PhaseBadge';
 import { PipelineStageBar } from '@/components/PipelineStageBar';
 import { Modal } from '@/components/Modal';
+import { OutlineEditorModal } from '@/components/OutlineEditorModal';
 import type { NovelSummary, RAGChunk } from '@/types/api';
 
 const EMPTY_FORM = {
@@ -44,6 +45,7 @@ export function NovelLibraryPage() {
   const [ragQuery, setRagQuery] = useState('');
   const [ragChunks, setRagChunks] = useState<RAGChunk[]>([]);
   const [ragLoading, setRagLoading] = useState(false);
+  const [outlineEditor, setOutlineEditor] = useState<NovelSummary | null>(null);
 
   const {
     paginatedItems: pagedNovels,
@@ -306,9 +308,13 @@ export function NovelLibraryPage() {
                     <p>参数: {JSON.stringify(n.params)}</p>
                   )}
                   {n.outline_url && (
-                    <a href={n.outline_url} target="_blank" rel="noreferrer" className="text-primary hover:underline block">
-                      查看大纲 JSON
-                    </a>
+                    <button
+                      type="button"
+                      onClick={() => setOutlineEditor(n)}
+                      className="text-primary hover:underline block text-left"
+                    >
+                      查看 / 编辑大纲
+                    </button>
                   )}
                   {n.params?.ragEnabled !== 'false' && (
                     <div className="space-y-2 pt-1">
@@ -493,6 +499,15 @@ export function NovelLibraryPage() {
           </div>
         </div>
       </Modal>
+
+      <OutlineEditorModal
+        open={!!outlineEditor}
+        namespace={outlineEditor?.namespace || 'default'}
+        name={outlineEditor?.name || ''}
+        displayTitle={outlineEditor ? displayTitle(outlineEditor) : undefined}
+        onClose={() => setOutlineEditor(null)}
+        onSaved={() => refresh()}
+      />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import type {
   ConversationData,
   CreateNovelPayload,
   ImportNovelPayload,
+  NovelOutline,
   NovelSummary,
   RAGSearchResult,
   RegenerateChapterPayload,
@@ -41,6 +42,23 @@ export async function fetchNovels(): Promise<NovelSummary[]> {
 
 export async function fetchNovelDetail(namespace: string, name: string): Promise<NovelSummary> {
   return request<NovelSummary>(`/novels/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}`);
+}
+
+export async function fetchNovelOutline(namespace: string, name: string): Promise<NovelOutline> {
+  return request<NovelOutline>(
+    `/novels/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}/outline`,
+  );
+}
+
+export async function saveNovelOutline(namespace: string, name: string, outline: NovelOutline): Promise<NovelOutline> {
+  return request<NovelOutline>(
+    `/novels/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}/outline`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(outline),
+    },
+  );
 }
 
 export async function createNovel(payload: CreateNovelPayload): Promise<NovelSummary> {

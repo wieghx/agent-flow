@@ -47,6 +47,18 @@ func ParseOutlineJSON(raw string) (*NovelOutline, error) {
 	return &outline, nil
 }
 
+// MarshalOutlineJSON pretty-prints outline for workspace storage.
+func MarshalOutlineJSON(outline *NovelOutline) (string, error) {
+	if outline == nil {
+		return "", fmt.Errorf("outline is nil")
+	}
+	data, err := json.MarshalIndent(outline, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	return string(data) + "\n", nil
+}
+
 // ValidateOutlineChapterCount checks outline size against expected count.
 func ValidateOutlineChapterCount(outline *NovelOutline, expected int) error {
 	if expected <= 0 || outline == nil {

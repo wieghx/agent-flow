@@ -110,6 +110,8 @@ func (a *API) handleNovelRoutes(w http.ResponseWriter, r *http.Request) {
 		a.handleNovelRegenerateChapter(w, r, namespace, name, chNum)
 	case action == "rag" && len(parts) >= 4 && parts[3] == "search" && r.Method == http.MethodGet:
 		a.handleNovelRAGSearch(w, r, namespace, name)
+	case action == "outline" && (r.Method == http.MethodGet || r.Method == http.MethodPut):
+		a.handleNovelOutline(w, r, namespace, name)
 	case action == "resume" && r.Method == http.MethodPost:
 		a.handleNovelResume(w, r, namespace, name)
 	case action == "" && r.Method == http.MethodGet:

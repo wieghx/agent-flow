@@ -10,9 +10,10 @@ import {
   regenerateChapter,
 } from '@/api/client';
 import { usePolling } from '@/hooks/usePolling';
-import { chapterNumFromStepId, chapterUrlFromStep, outlineUrl } from '@/lib/paths';
+import { chapterNumFromStepId, chapterUrlFromStep } from '@/lib/paths';
 import { PhaseBadge } from '@/components/PhaseBadge';
 import { Modal } from '@/components/Modal';
+import { OutlineEditorModal } from '@/components/OutlineEditorModal';
 
 const CHAPTER_PAGE_SIZE = 15;
 
@@ -37,6 +38,7 @@ export function NovelReaderPage() {
   const [rewriting, setRewriting] = useState(false);
   const [rewriteJob, setRewriteJob] = useState<string | null>(null);
   const [rewriteStatus, setRewriteStatus] = useState<string | null>(null);
+  const [showOutline, setShowOutline] = useState(false);
 
   const activeName = workflowName || workflows[0]?.name || '';
   const activeNovel = novels.find((n) => n.namespace === namespace && n.name === activeName);
@@ -232,10 +234,14 @@ export function NovelReaderPage() {
             {rewriteStatus && (
               <p className="text-amber-400">重写进行中… ({rewriteStatus})</p>
             )}
-            {outlineUrl(workspace) && (
-              <a href={outlineUrl(workspace)!} target="_blank" rel="noreferrer" className="text-primary hover:underline block">
-                查看 outline.json
-              </a>
+            {workspace && (
+              <button
+                type="button"
+                onClick={() => setShowOutline(true)}
+                className="text-primary hover:underline block text-left"
+              >
+                查看 / 编辑大纲
+              </button>
             )}
             <Link to="/workflows" className="text-gray-400 hover:text-white block">
               ← 返回工作流列表
@@ -315,6 +321,15 @@ export function NovelReaderPage() {
           )}
         </div>
       </article>
+
+      <OutlineEditorModal
+        open={showOutline}
+        namespace={namespace}
+        name={activeName}
+        displayTitle={displayTitle}
+        onClose={() => setShowOutline(false)}
+        onSaved={() => loadDetail()}
+      />
 
       <Modal open={showRewrite} onClose={() => setShowRewrite(false)} title="重写本章">
         <div className="space-y-4">
