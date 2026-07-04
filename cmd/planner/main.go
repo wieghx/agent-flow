@@ -123,7 +123,7 @@ func main() {
 		setupLog.Error(err, "Failed to open novel store")
 		os.Exit(1)
 	}
-	defer novelStore.Close()
+	defer func() { _ = novelStore.Close() }()
 	if err := store.PingStore(context.Background(), novelStore); err != nil {
 		setupLog.Info("Novel store ping failed, continuing with file fallback", "error", err)
 	} else if novelStore.Enabled() {

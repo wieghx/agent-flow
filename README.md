@@ -248,6 +248,9 @@ agent-flow/
 ```bash
 make build          # 构建 planner
 go test ./...       # 运行测试
+go vet ./...        # 静态检查
+make lint           # golangci-lint（需本地安装）
+cd web && npm ci && npm run build   # 前端构建
 make deploy-planner-cluster
 
 # 环境变量
@@ -256,7 +259,14 @@ export AGENTFLOW_LOG_LEVEL=info
 export AGENTFLOW_SKIP_SANDBOX=true # 本地跳过 Sandbox，Planner 内直接跑 AI / MCP
 ```
 
-推送至 GitHub 后，`.github/workflows/ci.yml` 自动执行测试与编译。
+推送至 GitHub 后，`.github/workflows/ci.yml` 自动执行：
+
+| Job | 内容 |
+|-----|------|
+| Go Test & Vet | `go test ./...`、`go vet ./...` |
+| Go Lint | `golangci-lint` |
+| Build Go Binaries | `planner`、`worker-agent`、`mcp-server` |
+| Build Web | `npm ci && npm run build` |
 
 ## 文档
 

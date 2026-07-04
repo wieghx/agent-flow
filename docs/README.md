@@ -22,11 +22,13 @@ Agent Flow 是基于 Kubernetes 和 eino 的 AI Agent 编排系统，采用 Plan
 - **Worker**：执行任务，生成分段章节等产出物
 - **Monitor**：评估质量，未通过则带反馈重试
 
-### Workflow 流水线
+### Workflow 流水线（默认团队模式）
 
 ```
-大纲骨架 → 分卷大纲(并行) → 合并 → 章节撰写(流水线并行) → 故事弧摘要
+历史调研(可选) → 大纲 → 设定圣经 → 逐章[梗概 → 剧情 → 执笔者 → 润色 → 质检] → 合并书稿
 ```
+
+另支持：**导入拆书**（`novel-import-deconstruct`）、**选章重写**（`novel-chapter-rewrite`）、**RAG 剧情检索**。
 
 ### 重试（指数退避）
 

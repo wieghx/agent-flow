@@ -72,25 +72,45 @@ Agent Flow 是一个基于 Kubernetes 的 AI Agent 编排系统，采用 Planner
 
 ### 6. Web UI
 
-- **职责**: 对话、任务/Workflow 管理、SSE 进度、章节浏览
-- **实现**: `web/src/`（Vite + React + TypeScript）+ `web/server.js`（静态资源与 API 代理）
-- **访问**: `./run-web.sh` → `http://localhost:3000`
+- **职责**: 对话、小说库、三阶段进度、RAG 检索、SSE 进度、章节阅读与选章重写
+- **实现**: `web/src/`（Vite + React + TypeScript）+ `web/server.js`（静态资源与 API 反向代理）
+- **访问**: `./run-web.sh` → `http://localhost:3000`（kind 集群需 port-forward，无独立网关）
 
 ### 7. Workflow Controller
 
-- **职责**: 解析 Workflow 模板、并行派发章节 Task、回补缺失章节、步骤级重试
+- **职责**: 解析 Workflow 模板、并行派发章节 Task、三阶段扩写、回补缺失章节、步骤级重试
 - **实现**: `internal/architecture/workflow_controller.go` + `internal/workflow/`
-- **模板**: `novel-outline-chapters`（大纲 → 分卷 → 章节 → 故事弧）
+- **模板**: `novel-team-chapters`（默认）、`novel-team-historical`、`novel-outline-chapters`、`novel-import-deconstruct`、`novel-chapter-rewrite`
 
-### 8. 混合存储
+### 8. Polish（润色编辑）
 
-- **PVC**: 章节正文、大纲 JSON、`chapters/*.md`
+- **职责**: 团队模式下统一文风，不改剧情
+- **实现**: `internal/flow/polish_node.go`
+- **位置**: 执笔者初稿之后、Monitor 质检之前
+
+### 9. RAG 剧情库
+
+- **职责**: 索引工作区梗概/剧情/正文，写作时注入参考片段
+- **实现**: `internal/rag/`（关键词 + 向量 hybrid 检索）
+- **存储**: 工作区内 `rag/index.json`、`rag/vectors.json`
+
+### 10. MCP Sidecar
+
+- **职责**: 历史调研、维基检索、网页抓取等联网工具
+- **实现**: `cmd/mcp-server/` + `internal/mcp/`
+- **触发**: `novel-team-historical` 或 `historicalResearch=true`
+
+### 11. 混合存储
+
+- **PVC**: 章节正文、大纲、设定圣经、RAG 索引、`book.md`
 - **SQLite**: `internal/store/`，章节状态、小说元数据（`novels.db`）
+- **Redis**（可选）: `internal/cache/`，任务评估历史与 SSE 事件；不可用时回退内存
 
-### 9. 重试与日志
+### 12. 重试与日志
 
 - **重试**: `internal/retry/` — 失败分类、指数退避、分段/Task/Workflow 三层策略
 - **日志**: `internal/log/` — `log/slog` 结构化输出，桥接 controller-runtime
+- **指标**: Prometheus metrics 端口 `:8080`（controller-runtime 默认）
 
 ## 数据流
 

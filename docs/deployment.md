@@ -122,6 +122,27 @@ WEB_IMAGE=your-registry/web:v1.0 ./deploy.sh
 # 镜像会推送到 kind-local:5000
 ```
 
+## CI/CD
+
+GitHub Actions 工作流：`.github/workflows/ci.yml`
+
+| Job | 触发条件 | 说明 |
+|-----|----------|------|
+| Go Test & Vet | push / PR → `main` | 单元测试 + `go vet` |
+| Go Lint | push / PR → `main` | `golangci-lint`（`.golangci.yml`） |
+| Build Go Binaries | 测试与 lint 通过后 | 编译三个 Go 二进制 |
+| Build Web | 测试通过后 | TypeScript 检查 + Vite 生产构建 |
+
+本地提交前建议：
+
+```bash
+go test ./... -count=1
+go vet ./...
+cd web && npm run build
+```
+
+E2E 脚本 `scripts/e2e-novel-local.sh` 需 K8s 集群与可用 AI，暂未纳入 CI。
+
 ## 验证部署
 
 ```bash
@@ -167,10 +188,6 @@ kind 集群 Service 类型为 ClusterIP，必须使用 port-forward。
 AGENTFLOW_SKIP_SANDBOX=true
 AGENTFLOW_OUTPUT_DIR=/data/outputs
 ```
-
-## CI
-
-`.github/workflows/ci.yml` 在 push/PR 到 `main`/`master` 时运行测试与编译，不包含镜像推送或自动部署。
 
 ## Workflow 运维
 

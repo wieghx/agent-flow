@@ -143,8 +143,21 @@ make generate
 
 推送至 GitHub 后，`.github/workflows/ci.yml` 自动运行：
 
-- `go test ./...`
-- 编译 `planner`、`worker-agent`、`mcp-server`
+| Job | 内容 |
+|-----|------|
+| Go Test & Vet | `go test ./...`、`go vet ./...` |
+| Go Lint | `golangci-lint`（配置见 `.golangci.yml`） |
+| Build Go Binaries | `planner`、`worker-agent`、`mcp-server` |
+| Build Web | `web/` 下 `npm ci && npm run build` |
+
+本地可手动执行：
+
+```bash
+go test ./...
+go vet ./...
+make lint          # 需先安装 golangci-lint
+cd web && npm ci && npm run build
+```
 
 ## 验证部署
 

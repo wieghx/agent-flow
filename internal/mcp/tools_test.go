@@ -30,7 +30,8 @@ func TestResolveSafePath(t *testing.T) {
 
 func TestFileWriteReadAppendCopy(t *testing.T) {
 	ctx := context.Background()
-	dir := filepath.Join(os.TempDir(), "mcp-tools-test")
+	// Use /tmp explicitly — os.TempDir() is /var/folders/... on macOS and fails path allowlist.
+	dir := "/tmp/mcp-tools-test"
 	_ = os.MkdirAll(dir, 0755)
 	defer os.RemoveAll(dir)
 
