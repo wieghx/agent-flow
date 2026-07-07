@@ -43,14 +43,49 @@
 - **导入拆书** — `POST /novels/import`：导入全文 → AI 拆书 → RAG 索引 → 可选续写
 - **RAG 剧情库** — 关键词检索工作区梗概/剧情/正文，写作时自动注入参考片段
 - **Web UI** — Vite + React，小说库导入、三阶段进度、RAG 检索、SSE 进度、章节浏览
+- **Token 统计** — 按小说/章节累计 LLM 用量，Web `/tokens` 报表页支持排序与 CSV 导出
 - **CI** — GitHub Actions：`go test` + 多二进制构建
+
+## AI 提供商配置
+
+Planner / Worker / Monitor 均通过 **OpenAI 兼容** HTTP API 调用（`POST {base_url}/v1/chat/completions`），默认使用 [DeepSeek](https://api.deepseek.com)。
+
+| 角色 | 典型用途 | 推荐模型 |
+|------|----------|----------|
+| Planner | 对话、任务编排 | `deepseek-chat` |
+| Worker | 大纲、章节正文 | `deepseek-chat` 或 `grok-4.3`（xAI） |
+| Monitor | 质量评分 | `deepseek-chat` |
+
+**Grok CLI（Cursor 对话助手）没有可供程序调用的 API**；若 Worker 要用 Grok，请使用 [xAI 官方 API](https://console.x.ai)（`https://api.x.ai`）。
+
+```bash
+# 1. 复制本地配置（gitignore，勿提交密钥）
+cp config/ai_config.example.yaml config/ai_config.local.yaml
+
+# 2. 编辑 ai_config.local.yaml，填入 base_url / api_key
+# 3. 或导出环境变量（与 yaml 中 ${AI_API_KEY} 占位符对应）
+export AI_BASE_URL=https://api.deepseek.com
+export AI_API_KEY=sk-...
+
+# 仅 Worker 使用 xAI Grok 时，在 local 文件中单独覆盖 worker 段：
+# worker:
+#   remote:
+#     base_url: https://api.x.ai
+#     api_key: <XAI_API_KEY>
+#     model: grok-4.3
+```
+
+详见 [docs/configuration.md](docs/configuration.md)。
 
 ## 快速开始
 
 ```bash
-# 前置：Kubernetes 集群、kubectl、Docker
+# 前置：Kubernetes 集群、kubectl、Docker/Podman
 
-# 一键部署（控制器 + Web + agent-sandbox）
+# 本地 kind 集群若 agent-sandbox CrashLoop，先检查 inotify 上限
+./scripts/fix-inotify.sh
+
+# 配置 AI（见上一节），然后一键部署
 ./deploy.sh --local
 
 # 访问 Web UI（kind 集群无外部 IP，必须 port-forward）
@@ -167,6 +202,16 @@ curl -s -X POST http://127.0.0.1:18082/novels/default/<novel>/chapters/3/regener
 
 `layer` 可选 `chapter`（正文）或 `plot`（剧情脚本）。流程：RAG 参考 → 重写 → 质检 → 同步 `outline.json` 梗概。
 
+### Token 用量报表
+
+Web UI 导航 **Token 报表**（`/tokens`），或 API：
+
+```bash
+curl -s http://127.0.0.1:18082/novels/tokens/report
+```
+
+返回全书/各章 `prompt_tokens`、`completion_tokens`、`total_tokens` 汇总；小说库与阅读器页面也会显示单书用量。仅统计配置 AI 后新产生的任务。
+
 **向量检索（可选）**：配置 OpenAI 兼容 Embedding API 后启用 hybrid 检索（BM25 + 向量）：
 
 ```bash
@@ -242,6 +287,8 @@ agent-flow/
 | `./run-web.sh` | port-forward Web UI → http://localhost:3000 |
 | `./scripts/resume-workflow.sh` | 恢复失败的 Workflow |
 | `./scripts/cleanup-workflow-tasks.sh` | 清理已完成 Task CRD 残留 |
+| `./scripts/fix-inotify.sh` | 诊断/修复 inotify 上限（agent-sandbox CrashLoop 常见原因） |
+| `./scripts/read-ai-secrets.sh` | 从 `ai_config.local.yaml` 导出 `AI_*` / `WORKER_AI_*` 环境变量 |
 
 ## 开发与 CI
 

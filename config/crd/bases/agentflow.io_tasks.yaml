@@ -637,6 +637,20 @@ spec:
                 description: StartTimeUnix is when the task started (Unix timestamp)
                 format: int64
                 type: integer
+              tokenUsage:
+                description: TokenUsage is cumulative LLM token consumption for this
+                  task.
+                properties:
+                  completionTokens:
+                    format: int32
+                    type: integer
+                  promptTokens:
+                    format: int32
+                    type: integer
+                  totalTokens:
+                    format: int32
+                    type: integer
+                type: object
               workerName:
                 description: WorkerName is the name of the worker that executed this
                   task

@@ -162,6 +162,9 @@ data: {"step":"worker","message":"..."}
 | `plots_done` | 已完成剧情章数 |
 | `workspace_path` | PVC 工作区路径 |
 | `book_url` | 合并书稿访问路径 |
+| `prompt_tokens` | 累计输入 Token |
+| `completion_tokens` | 累计输出 Token |
+| `total_tokens` | 累计总 Token |
 
 ### POST /novels/create
 
@@ -239,6 +242,29 @@ data: {"step":"worker","message":"..."}
 
 - `layer`：`plot`（剧情层）或 `chapter`（正文层，默认）
 - 响应含 `rewrite_workflow` 子 Workflow 名称
+
+### GET /novels/{namespace}/{name}/chapters
+
+章节列表，含每章 `prompt_tokens`、`completion_tokens`、`total_tokens`、`word_count`。
+
+### GET /novels/tokens/report
+
+全书 Token 用量汇总报表。
+
+**响应 `data` 字段（节选）:**
+
+| 字段 | 说明 |
+|------|------|
+| `novel_count` | 有记录的小说数 |
+| `chapters_with_tokens` | 有 Token 数据的章节数 |
+| `prompt_tokens` | 全库输入 Token 合计 |
+| `completion_tokens` | 全库输出 Token 合计 |
+| `total_tokens` | 全库总 Token |
+| `avg_novel_tokens` | 平均每部小说 Token |
+| `avg_chapter_tokens` | 平均每章 Token |
+| `novels[]` | 各书明细（含 `chapters[]` 逐章统计） |
+
+Web UI `/tokens` 页调用此接口，支持 CSV 导出。
 
 ---
 

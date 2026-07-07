@@ -2,38 +2,68 @@
 
 ## AI 配置
 
-配置文件: `config/ai_config.yaml`
+主配置文件：`config/ai_config.yaml`（提交到 git，仅含占位符，**勿写入真实密钥**）。
+
+本地覆盖：`config/ai_config.local.yaml`（`.gitignore`，运行时自动 merge 覆盖同名段）。
+
+```bash
+cp config/ai_config.example.yaml config/ai_config.local.yaml
+# 编辑 base_url、api_key、model
+```
+
+### 支持的提供商
+
+所有角色通过 **OpenAI 兼容** Chat Completions API 调用（实现见 `internal/ai/remote_client.go`：`POST {base_url}/v1/chat/completions`）。
+
+| 提供商 | `base_url` | 常用模型 | 说明 |
+|--------|------------|----------|------|
+| [DeepSeek](https://api.deepseek.com) | `https://api.deepseek.com` | `deepseek-chat` | **默认**，Planner / Worker / Monitor 通用 |
+| [xAI Grok](https://console.x.ai) | `https://api.x.ai` | `grok-4.3`、`grok-3` | 适合 Worker 长文创作 |
+| 自托管 vLLM / Ollama 网关 | `http://<host>:<port>` | 自定义 | 任意 OpenAI 兼容端点 |
+| [OpenAI](https://platform.openai.com) | `https://api.openai.com` | `gpt-4o` 等 | 标准兼容 |
+
+> **Grok CLI ≠ xAI API**：Cursor / Grok CLI 是对话式编程助手，**没有**可供 agent-flow Worker 调用的 HTTP API。要在流水线里使用 Grok 模型，请申请 xAI API Key 并配置 `base_url: https://api.x.ai`。
 
 ### 配置结构
 
 ```yaml
 global:
-  default_model: Qwen3.5-35B-A3B
+  default_model: deepseek-chat
   system_prompt: "系统提示词..."
 
-planner:        # Planner AI 配置
-  description: 任务规划大脑
+planner:        # Planner AI — 对话、任务/Workflow 编排
   mode: remote  # remote 或 local
   remote:
     enabled: true
-    base_url: http://<host>:<port>
+    base_url: ${AI_BASE_URL}
     api_key: ${AI_API_KEY}
-    model: Qwen3.5-35B-A3B
+    model: deepseek-chat
     temperature: 0.7
-    max_tokens: 65536
+    max_tokens: 8192
     timeout_seconds: 300
   local:
     enabled: false
     base_url: http://localhost:11434
     model: qwen2.5:7b
 
-worker:         # Worker AI 配置
+worker:         # Worker AI — 大纲、章节正文
   mode: remote
-  ...
+  remote:
+    base_url: ${AI_BASE_URL}
+    api_key: ${AI_API_KEY}
+    model: deepseek-chat
+  local:
+    enabled: true   # 本地开发可切 Ollama
+    base_url: http://localhost:11434
+    model: qwen2.5:7b
 
-monitor:        # Monitor AI 配置
+monitor:        # Monitor AI — 质量评分
   mode: remote
-  ...
+  remote:
+    base_url: ${AI_BASE_URL}
+    api_key: ${AI_API_KEY}
+    model: deepseek-chat
+    temperature: 0.2
 
 logging:
   level: info
@@ -50,13 +80,11 @@ quality:
   max_retries: 3
 ```
 
-### 角色配置
+### 角色模式
 
-每个 AI 角色（Planner/Worker/Monitor）支持两种模式：
+#### Remote 模式（推荐）
 
-#### Remote 模式
-
-通过 HTTP API 调用远程 LLM 服务（如 vLLM、OpenAI 兼容 API）。
+通过 HTTP 调用远程 LLM。请求/响应格式可在 yaml 中自定义 `request.body_template` 与 `response.extract_field`；默认按 OpenAI Chat Completions 解析。
 
 ```yaml
 planner:
@@ -65,21 +93,17 @@ planner:
     enabled: true
     base_url: ${AI_BASE_URL}
     api_key: ${AI_API_KEY}
-    model: Qwen3.5-35B-A3B
-    temperature: 0.7
-    max_tokens: 65536
-    timeout_seconds: 300
+    model: deepseek-chat
     request:
       headers:
         Content-Type: application/json
         Authorization: Bearer ${AI_API_KEY}
     response:
       extract_field: choices[0].message.content
+      error_field: error.message
 ```
 
-#### Local 模式
-
-通过 Ollama 调用本地 LLM 服务。
+#### Local 模式（Ollama）
 
 ```yaml
 worker:
@@ -90,27 +114,77 @@ worker:
     model: qwen2.5:7b
     temperature: 0.7
     top_p: 0.9
-    max_tokens: 2048
+    max_tokens: 4096
     endpoints:
       generate: /api/generate
       chat: /api/chat
 ```
 
-### 环境变量
+### 分角色使用不同模型
 
-配置文件中支持环境变量替换：
+`ai_config.local.yaml` 只需覆盖要改的段，其余继承 `ai_config.yaml`。
+
+**示例：Planner / Monitor 用 DeepSeek，Worker 用 xAI Grok**
 
 ```yaml
-api_key: ${AI_API_KEY}
-base_url: ${AI_BASE_URL}
+# config/ai_config.local.yaml
+planner:
+  remote:
+    base_url: https://api.deepseek.com
+    api_key: sk-...
+    model: deepseek-chat
+
+worker:
+  mode: remote
+  remote:
+    base_url: https://api.x.ai
+    api_key: xai-...
+    model: grok-4.3
+  local:
+    enabled: false
+
+monitor:
+  remote:
+    base_url: https://api.deepseek.com
+    api_key: sk-...
+    model: deepseek-chat
 ```
 
-在环境或 `.env` 文件中设置：
+### 环境变量
+
+yaml 支持 `${VAR}` 占位符，启动时从进程环境替换：
+
+| 变量 | 说明 |
+|------|------|
+| `AI_API_KEY` | 默认 API Key（Planner / Worker / Monitor 共用） |
+| `AI_BASE_URL` | 默认 API 根地址（不含 `/v1` 路径） |
+| `WORKER_AI_API_KEY` | 可选，K8s Secret 注入 Worker 专用 Key |
+| `WORKER_AI_BASE_URL` | 可选，K8s Secret 注入 Worker 专用地址 |
 
 ```bash
-export AI_API_KEY=your-api-key
-export AI_BASE_URL=http://your-llm-server:9101
+export AI_API_KEY=sk-...
+export AI_BASE_URL=https://api.deepseek.com
+
+# 从 local 配置一键导出（deploy 脚本会 source）
+source ./scripts/read-ai-secrets.sh
 ```
+
+**Kubernetes 注意**：`deploy.sh` 会将 `WORKER_AI_*` 写入 Secret，但 `ai_config.yaml` 中 Worker 段默认引用 `${AI_BASE_URL}` / `${AI_API_KEY}`。要在集群内分角色部署，请任选其一：
+
+1. 在容器可访问路径提供 `ai_config.local.yaml` 覆盖 Worker 段（推荐）
+2. 将 Worker 段的占位符改为 `${WORKER_AI_BASE_URL}` / `${WORKER_AI_API_KEY}` 并重新部署 ConfigMap
+
+访问 `api.x.ai` 若需代理，请确认 Sandbox 网络与 `NO_PROXY` 白名单（DeepSeek 域名通常在白名单内，xAI 可能需走代理 Sidecar）。
+
+### Token 统计
+
+启用 Remote / Local AI 后，系统自动从 API 响应解析 `usage` 字段并累计：
+
+- **Task CRD**：`status.tokenUsage`
+- **SQLite**：`novels` / `chapters` 表的 `prompt_tokens`、`completion_tokens`、`total_tokens`
+- **Web**：小说库、阅读器、[/tokens 报表页](api-reference.md#get-novelstokensreport)
+
+历史任务在开启统计前已完成，不会回填用量。
 
 ### 质量检查配置
 
@@ -143,6 +217,14 @@ execution:
 章节 Task 重试上限通过 Workflow `params.taskMaxRetries` 设置（默认 5，样本为 6）。
 
 实现细节见 [workflow.md](workflow.md)。
+
+### RAG Embedding（可选）
+
+```bash
+export RAG_EMBEDDING_BASE_URL="${AI_BASE_URL}"
+export RAG_EMBEDDING_API_KEY="${AI_API_KEY}"
+export RAG_EMBEDDING_MODEL="text-embedding-3-small"
+```
 
 ### 结构化日志
 

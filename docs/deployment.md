@@ -199,6 +199,27 @@ kubectl apply -f config/samples/novel_parallel_demo.yaml
 
 ## 故障排查
 
+### agent-sandbox-controller CrashLoopBackOff
+
+本地 kind + controller-runtime 会大量占用 inotify。宿主机上限过低时日志出现 `too many open files`，sandbox 控制器反复重启。
+
+```bash
+./scripts/fix-inotify.sh
+
+# 若提示不足，以 root 执行：
+sudo sysctl -w fs.inotify.max_user_instances=512
+sudo sysctl -w fs.inotify.max_user_watches=524288
+
+# 持久化（可选）
+sudo tee /etc/sysctl.d/99-agent-flow-inotify.conf >/dev/null <<EOF
+fs.inotify.max_user_instances=512
+fs.inotify.max_user_watches=524288
+EOF
+sudo sysctl --system
+
+kubectl delete pod -n agent-sandbox-system -l app=agent-sandbox-controller
+```
+
 ### 控制器无法启动
 
 ```bash

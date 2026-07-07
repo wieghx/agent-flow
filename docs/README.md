@@ -10,7 +10,7 @@ Agent Flow 是基于 Kubernetes 和 eino 的 AI Agent 编排系统，采用 Plan
 | [快速开始](getting-started.md) | 部署和使用指南 |
 | [Workflow 编排](workflow.md) | 100 章小说、重试策略、运维脚本 |
 | [API 参考](api-reference.md) | HTTP API 接口 |
-| [配置指南](configuration.md) | AI、日志、重试、环境变量 |
+| [配置指南](configuration.md) | AI 提供商（DeepSeek / xAI Grok）、分角色配置、Token 统计、环境变量 |
 | [部署指南](deployment.md) | 部署架构、CI、故障排查 |
 | [CRD 参考](crd-reference.md) | Task、Workflow、Monitor CRD |
 
@@ -28,7 +28,11 @@ Agent Flow 是基于 Kubernetes 和 eino 的 AI Agent 编排系统，采用 Plan
 历史调研(可选) → 大纲 → 设定圣经 → 逐章[梗概 → 剧情 → 执笔者 → 润色 → 质检] → 合并书稿
 ```
 
-另支持：**导入拆书**（`novel-import-deconstruct`）、**选章重写**（`novel-chapter-rewrite`）、**RAG 剧情检索**。
+另支持：**导入拆书**（`novel-import-deconstruct`）、**选章重写**（`novel-chapter-rewrite`）、**RAG 剧情检索**、**Token 用量报表**（`/tokens`）。
+
+### AI 提供商
+
+默认 [DeepSeek](https://api.deepseek.com)；Worker 可单独切换 [xAI Grok API](https://api.x.ai)。Grok CLI（IDE 助手）无程序调用接口，详见 [配置指南](configuration.md)。
 
 ### 重试（指数退避）
 

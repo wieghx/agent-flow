@@ -7,12 +7,32 @@
 - Docker 或 Podman 已安装
 - Go 1.26+（开发构建用）
 
+## 配置 AI
+
+部署前配置 LLM 凭证（OpenAI 兼容 API，默认 DeepSeek）：
+
+```bash
+cp config/ai_config.example.yaml config/ai_config.local.yaml
+# 编辑 api_key、base_url；勿提交 ai_config.local.yaml
+
+export AI_BASE_URL=https://api.deepseek.com
+export AI_API_KEY=sk-...
+
+# 可选：仅 Worker 使用 xAI Grok — 在 local 文件中覆盖 worker.remote 段
+# base_url: https://api.x.ai  model: grok-4.3
+```
+
+详见 [configuration.md](configuration.md)。Grok CLI 不能作为 API 接入；需使用 xAI 官方端点。
+
 ## 一键部署
 
 ```bash
 # 克隆项目
 git clone <repo-url>
 cd agent-flow
+
+# 本地 kind：先检查 inotify（agent-sandbox CrashLoop 时）
+./scripts/fix-inotify.sh
 
 # 一键部署（构建镜像 + 安装 CRD + 部署控制器 + Web）
 ./deploy.sh
@@ -52,7 +72,7 @@ kubectl port-forward -n agent-flow-system svc/agentflow-web 3000:80
 # 浏览器打开 http://localhost:3000
 ```
 
-功能：对话、任务列表、Workflow 监控、SSE 进度、章节浏览。
+功能：对话、任务列表、Workflow 监控、SSE 进度、章节浏览、**Token 报表**（`/tokens`）。
 
 ## 使用流程
 
