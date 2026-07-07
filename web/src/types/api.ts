@@ -86,6 +86,7 @@ export interface TokenReportNovel {
   completion_tokens: number;
   total_tokens: number;
   avg_chapter_tokens: number;
+  estimated_cost_usd?: number;
   chapters: ChapterSummary[];
 }
 
@@ -99,6 +100,8 @@ export interface TokenReport {
   total_tokens: number;
   avg_novel_tokens: number;
   avg_chapter_tokens: number;
+  estimated_cost_usd?: number;
+  cost_model?: string;
   novels: TokenReportNovel[];
 }
 
@@ -115,12 +118,17 @@ export interface NovelOutline {
   chapters: ChapterOutline[];
 }
 
+export type NovelTemplate = 'novel-team-chapters' | 'novel-team-historical';
+
 export interface CreateNovelPayload {
   title?: string;
   prompt?: string;
+  template?: NovelTemplate;
+  historical_era?: string;
   chapter_count?: number;
   words_per_chapter?: number;
   quality_threshold?: number;
+  params?: Record<string, string>;
   namespace?: string;
   name?: string;
 }

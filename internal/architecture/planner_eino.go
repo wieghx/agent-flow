@@ -581,7 +581,7 @@ func (p *TaskPlannerEino) resolveQualityThreshold(task *agentflowiov1alpha1.Task
 	if p.AIService != nil && p.AIService.Config() != nil && p.AIService.Config().Quality.Threshold > 0 {
 		return p.AIService.Config().Quality.Threshold
 	}
-	return 70
+	return wfengine.DefaultQualityThreshold
 }
 
 func (p *TaskPlannerEino) needsQualityCheck(task *agentflowiov1alpha1.Task) bool {

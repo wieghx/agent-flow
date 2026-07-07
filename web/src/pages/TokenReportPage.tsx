@@ -4,6 +4,7 @@ import { fetchTokenReport } from '@/api/client';
 import { usePolling } from '@/hooks/usePolling';
 import { usePagination } from '@/hooks/usePagination';
 import { Pagination } from '@/components/Pagination';
+import { formatCostUSD } from '@/lib/cost';
 import { formatTokenCount } from '@/lib/tokens';
 import type { TokenReportNovel } from '@/types/api';
 
@@ -129,8 +130,13 @@ export function TokenReportPage() {
 
       {r && (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <StatCard label="总 Token" value={formatTokenCount(r.total_tokens)} hint={`${r.novel_count} 部小说`} />
+            <StatCard
+              label="预估费用"
+              value={formatCostUSD(r.estimated_cost_usd)}
+              hint={r.cost_model ? `按 ${r.cost_model} 单价估算` : '按 deepseek-chat 单价估算'}
+            />
             <StatCard
               label="输入 / 输出"
               value={`${formatTokenCount(r.prompt_tokens)} / ${formatTokenCount(r.completion_tokens)}`}
@@ -223,6 +229,9 @@ export function TokenReportPage() {
                       </span>
                       {n.avg_chapter_tokens > 0 && (
                         <span className="text-gray-500">章均 {formatTokenCount(n.avg_chapter_tokens)}</span>
+                      )}
+                      {n.estimated_cost_usd != null && n.estimated_cost_usd > 0 && (
+                        <span className="text-emerald-400">{formatCostUSD(n.estimated_cost_usd)}</span>
                       )}
                     </div>
                   </button>

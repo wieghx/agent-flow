@@ -10,6 +10,12 @@ func TestDefaultNovelParams(t *testing.T) {
 	if params["maxParallel"] != "8" {
 		t.Fatalf("maxParallel: %s", params["maxParallel"])
 	}
+	if params["qualityThreshold"] != "78" {
+		t.Fatalf("qualityThreshold: %s", params["qualityThreshold"])
+	}
+	if params["pauseOnStepFail"] != "false" {
+		t.Fatalf("pauseOnStepFail: %s", params["pauseOnStepFail"])
+	}
 }
 
 func TestExtractChapterCountFromText(t *testing.T) {

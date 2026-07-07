@@ -13,6 +13,7 @@ import (
 	"agent-flow/internal/flow"
 	applog "agent-flow/internal/log"
 	"agent-flow/internal/store"
+	"agent-flow/internal/utils/safepath"
 	wfengine "agent-flow/internal/workflow"
 
 	corev1 "k8s.io/api/core/v1"
@@ -820,6 +821,10 @@ func (a *API) handleCreateWorkflow(w http.ResponseWriter, r *http.Request) {
 		name = fmt.Sprintf("wf-%d", time.Now().Unix())
 	}
 
+	chapterCount := wfengine.IntParam(req.Params, "chapterCount", 10)
+	defaults := wfengine.DefaultNovelParams(chapterCount)
+	req.Params = wfengine.MergeParams(defaults, req.Params)
+
 	wf, err := flow.NewWorkflowCRD(template, req.Prompt, req.Params, name, namespace)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
@@ -842,7 +847,13 @@ func (a *API) handleCreateWorkflow(w http.ResponseWriter, r *http.Request) {
 
 // handleOutputFile 从 PVC 提供产出物文件下载
 func (a *API) handleOutputFile(w http.ResponseWriter, r *http.Request) {
-	filePath := "/data/outputs" + r.URL.Path[len("/outputs"):]
+	rel := strings.TrimPrefix(r.URL.Path, "/outputs/")
+	filePath, err := safepath.ResolveUnderRoot("/data/outputs", rel)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(Response{Success: false, Error: err.Error()})
+		return
+	}
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")

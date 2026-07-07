@@ -8,7 +8,7 @@ import (
 
 func importDeconstructSpec(prompt string, params map[string]string) agentflowiov1alpha1.WorkflowSpec {
 	chapterCount := IntParam(params, "chapterCount", 10)
-	quality := int32(IntParam(params, "qualityThreshold", 75))
+	quality := int32(IntParam(params, "qualityThreshold", DefaultQualityThreshold))
 	title := params["title"]
 	if title == "" {
 		title = prompt

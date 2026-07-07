@@ -120,9 +120,9 @@ spec:
         - name: https_proxy
           value: "http://127.0.0.1:10810"
         - name: NO_PROXY
-          value: "localhost,127.0.0.1,10.96.0.0/16,10.244.0.0/16,api.deepseek.com,.svc,.cluster.local"
+          value: "localhost,127.0.0.1,10.96.0.0/16,10.244.0.0/16,api.deepseek.com,api.x.ai,.svc,.cluster.local"
         - name: no_proxy
-          value: "localhost,127.0.0.1,10.96.0.0/16,10.244.0.0/16,api.deepseek.com,.svc,.cluster.local"
+          value: "localhost,127.0.0.1,10.96.0.0/16,10.244.0.0/16,api.deepseek.com,api.x.ai,.svc,.cluster.local"
         - name: AI_API_KEY
           valueFrom:
             secretKeyRef:

@@ -42,13 +42,13 @@ func novelProductionSpec(prompt string, params map[string]string, template strin
 	research := HistoricalResearchEnabled(params, prompt)
 	chapterCount := IntParam(params, "chapterCount", 10)
 	wordsPerChapter := IntParam(params, "wordsPerChapter", 3000)
-	quality := int32(IntParam(params, "qualityThreshold", 75))
+	quality := int32(IntParam(params, "qualityThreshold", DefaultQualityThreshold))
 
 	execution := agentflowiov1alpha1.WorkflowExecution{
 		Mode:            ExecutionModeParallel,
 		MaxParallel:     DefaultMaxParallel,
 		StepMaxRetries:  DefaultStepMaxRetries,
-		PauseOnStepFail: true,
+		PauseOnStepFail: DefaultPauseOnStepFail,
 		AutoApprove:     true,
 	}
 	if v := IntParam(params, "maxParallel", 0); v > 0 {

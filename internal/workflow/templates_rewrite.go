@@ -8,7 +8,7 @@ import (
 
 func chapterRewriteSpec(prompt string, params map[string]string) agentflowiov1alpha1.WorkflowSpec {
 	chapterNum := RewriteChapterNum(params)
-	quality := int32(IntParam(params, "qualityThreshold", 75))
+	quality := int32(IntParam(params, "qualityThreshold", DefaultQualityThreshold))
 	layer := RewriteLayer(params)
 	layerLabel := "正文"
 	if layer == RewriteLayerPlot {

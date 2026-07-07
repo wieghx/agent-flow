@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 
+	"agent-flow/internal/ai"
 	"agent-flow/internal/store"
 )
 
@@ -19,7 +20,21 @@ func (a *API) handleTokenReport(w http.ResponseWriter, r *http.Request) {
 	if report == nil {
 		report = &store.TokenReport{}
 	}
+	enrichTokenReportCost(report)
 	writeJSON(w, Response{Success: true, Data: report})
+}
+
+func enrichTokenReportCost(report *store.TokenReport) {
+	if report == nil {
+		return
+	}
+	model := ai.CostModel()
+	report.CostModel = model
+	report.EstimatedCostUSD = ai.EstimateCostUSD(model, report.PromptTokens, report.CompletionTokens)
+	for i := range report.Novels {
+		n := &report.Novels[i]
+		n.EstimatedCostUSD = ai.EstimateCostUSD(model, n.PromptTokens, n.CompletionTokens)
+	}
 }
 
 // ChapterSummary is one chapter with token stats for the library API.

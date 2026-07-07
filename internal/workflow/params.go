@@ -8,6 +8,13 @@ import (
 
 var chapterCountRE = regexp.MustCompile(`(\d+)\s*章`)
 
+const (
+	// DefaultQualityThreshold is the workflow QC score (0-100) when params omit qualityThreshold.
+	DefaultQualityThreshold = 78
+	// DefaultPauseOnStepFail stops the workflow on first step failure when true.
+	DefaultPauseOnStepFail = false
+)
+
 // DefaultNovelParams returns production-oriented defaults for novel-outline-chapters.
 func DefaultNovelParams(chapterCount int) map[string]string {
 	if chapterCount <= 0 {
@@ -23,14 +30,14 @@ func DefaultNovelParams(chapterCount int) map[string]string {
 		"contextChapters":        "8",
 		"volumeSize":             "25",
 		"arcInterval":            "10",
-		"qualityThreshold":       "78",
+		"qualityThreshold":       strconv.Itoa(DefaultQualityThreshold),
 		"taskMaxRetries":         "6",
 		"maxParallel":            "8",
 		"chapterPipeline":        "8",
 		"stepMaxRetries":         "3",
 		"stepRetryBaseDelaySec":  "30",
 		"stepRetryMaxDelaySec":   "300",
-		"pauseOnStepFail":        "false",
+		"pauseOnStepFail":        strconv.FormatBool(DefaultPauseOnStepFail),
 		"threeStage":             "true",
 		"ragEnabled":             "true",
 		"ragSearchMode":          "hybrid",

@@ -61,14 +61,16 @@ type ImportNovelRequest struct {
 
 // CreateNovelRequest creates a novel workflow from the library UI.
 type CreateNovelRequest struct {
-	Name            string            `json:"name"`
-	Namespace       string            `json:"namespace"`
-	Title           string            `json:"title"`
-	Prompt          string            `json:"prompt"`
-	ChapterCount    int               `json:"chapter_count"`
-	WordsPerChapter int               `json:"words_per_chapter"`
-	QualityThreshold int              `json:"quality_threshold"`
-	Params          map[string]string `json:"params"`
+	Name             string            `json:"name"`
+	Namespace        string            `json:"namespace"`
+	Title            string            `json:"title"`
+	Prompt           string            `json:"prompt"`
+	Template         string            `json:"template"`
+	HistoricalEra    string            `json:"historical_era"`
+	ChapterCount     int               `json:"chapter_count"`
+	WordsPerChapter  int               `json:"words_per_chapter"`
+	QualityThreshold int               `json:"quality_threshold"`
+	Params           map[string]string `json:"params"`
 }
 
 func (a *API) handleNovelList(w http.ResponseWriter, r *http.Request) {
@@ -166,6 +168,10 @@ func (a *API) handleCreateNovel(w http.ResponseWriter, r *http.Request) {
 	if req.QualityThreshold > 0 {
 		params["qualityThreshold"] = fmt.Sprintf("%d", req.QualityThreshold)
 	}
+	if era := strings.TrimSpace(req.HistoricalEra); era != "" {
+		params["historicalEra"] = era
+		params["historicalResearch"] = "true"
+	}
 	params = wfengine.MergeParams(params, req.Params)
 
 	prompt := strings.TrimSpace(req.Prompt)
@@ -185,7 +191,13 @@ func (a *API) handleCreateNovel(w http.ResponseWriter, r *http.Request) {
 		wfName = flow.ProposeWorkflowName(prompt)
 	}
 
-	template := wfengine.DefaultNovelTemplate(params, prompt)
+	template := strings.TrimSpace(req.Template)
+	if template == "" {
+		template = wfengine.DefaultNovelTemplate(params, prompt)
+	}
+	if strings.TrimSpace(req.HistoricalEra) != "" {
+		template = "novel-team-historical"
+	}
 	wf, err := flow.NewWorkflowCRD(template, prompt, params, wfName, namespace)
 	if err != nil {
 		writeJSON(w, Response{Success: false, Error: err.Error()})

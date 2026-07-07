@@ -16,6 +16,7 @@ type TokenReportNovel struct {
 	CompletionTokens int            `json:"completion_tokens"`
 	TotalTokens      int            `json:"total_tokens"`
 	AvgChapterTokens int            `json:"avg_chapter_tokens"`
+	EstimatedCostUSD float64        `json:"estimated_cost_usd"`
 	Chapters         []ChapterEntry `json:"chapters"`
 }
 
@@ -30,6 +31,8 @@ type TokenReport struct {
 	TotalTokens      int                `json:"total_tokens"`
 	AvgNovelTokens   int                `json:"avg_novel_tokens"`
 	AvgChapterTokens int                `json:"avg_chapter_tokens"`
+	EstimatedCostUSD float64            `json:"estimated_cost_usd"`
+	CostModel        string             `json:"cost_model,omitempty"`
 	Novels           []TokenReportNovel `json:"novels"`
 }
 

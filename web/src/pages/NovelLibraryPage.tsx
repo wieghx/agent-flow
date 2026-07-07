@@ -16,14 +16,19 @@ import { PipelineStageBar } from '@/components/PipelineStageBar';
 import { Modal } from '@/components/Modal';
 import { OutlineEditorModal } from '@/components/OutlineEditorModal';
 import { formatTokenCount } from '@/lib/tokens';
-import type { NovelSummary, RAGChunk } from '@/types/api';
+import type { NovelSummary, NovelTemplate, RAGChunk } from '@/types/api';
 
 const EMPTY_FORM = {
   title: '',
   prompt: '',
+  template: 'novel-team-chapters' as NovelTemplate,
+  historical_era: '',
   chapter_count: 20,
   words_per_chapter: 2500,
-  quality_threshold: 72,
+  quality_threshold: 78,
+  three_stage: true,
+  rag_enabled: true,
+  show_advanced: false,
 };
 
 const EMPTY_IMPORT = {
@@ -106,9 +111,15 @@ export function NovelLibraryPage() {
       await createNovel({
         title: form.title.trim(),
         prompt: form.prompt.trim(),
+        template: form.template,
+        historical_era: form.historical_era.trim() || undefined,
         chapter_count: form.chapter_count,
         words_per_chapter: form.words_per_chapter,
         quality_threshold: form.quality_threshold,
+        params: {
+          threeStage: String(form.three_stage),
+          ragEnabled: String(form.rag_enabled),
+        },
       });
       setShowCreate(false);
       setForm(EMPTY_FORM);
@@ -393,6 +404,34 @@ export function NovelLibraryPage() {
               placeholder="第三人称，荒岛生存题材，禁止现代网络用语……"
             />
           </label>
+          <label className="block text-sm">
+            <span className="text-gray-400">流水线模板</span>
+            <select
+              className="mt-1 w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2"
+              value={form.template}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  template: e.target.value as NovelTemplate,
+                  historical_era: e.target.value === 'novel-team-historical' ? f.historical_era : '',
+                }))
+              }
+            >
+              <option value="novel-team-chapters">团队模式（执笔者 + 润色 + 质检）</option>
+              <option value="novel-team-historical">历史小说（团队 + MCP 联网调研）</option>
+            </select>
+          </label>
+          {form.template === 'novel-team-historical' && (
+            <label className="block text-sm">
+              <span className="text-gray-400">历史时代锚点</span>
+              <input
+                className="mt-1 w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2"
+                value={form.historical_era}
+                onChange={(e) => setForm((f) => ({ ...f, historical_era: e.target.value }))}
+                placeholder="明朝万历年间"
+              />
+            </label>
+          )}
           <div className="grid grid-cols-3 gap-3 text-sm">
             <label>
               <span className="text-gray-400 block mb-1">章节数</span>
@@ -426,6 +465,33 @@ export function NovelLibraryPage() {
               />
             </label>
           </div>
+          <button
+            type="button"
+            onClick={() => setForm((f) => ({ ...f, show_advanced: !f.show_advanced }))}
+            className="text-xs text-primary hover:underline"
+          >
+            {form.show_advanced ? '收起高级选项' : '高级选项'}
+          </button>
+          {form.show_advanced && (
+            <div className="grid grid-cols-2 gap-3 text-sm border border-dark-border rounded-lg p-3">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={form.three_stage}
+                  onChange={(e) => setForm((f) => ({ ...f, three_stage: e.target.checked }))}
+                />
+                <span className="text-gray-300">三阶段扩写（梗概 → 剧情 → 正文）</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={form.rag_enabled}
+                  onChange={(e) => setForm((f) => ({ ...f, rag_enabled: e.target.checked }))}
+                />
+                <span className="text-gray-300">RAG 剧情检索注入</span>
+              </label>
+            </div>
+          )}
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
@@ -436,7 +502,11 @@ export function NovelLibraryPage() {
             </button>
             <button
               type="button"
-              disabled={creating || (!form.prompt.trim() && !form.title.trim())}
+              disabled={
+                creating ||
+                (!form.prompt.trim() && !form.title.trim()) ||
+                (form.template === 'novel-team-historical' && !form.historical_era.trim())
+              }
               onClick={submitCreate}
               className="px-4 py-2 bg-primary rounded-lg text-sm font-medium disabled:opacity-50"
             >

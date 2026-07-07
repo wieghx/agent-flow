@@ -315,7 +315,30 @@ func resolveEnvironmentVariables(config *AIConfig) AIConfig {
 		config.Monitor.Remote.BaseURL = os.ExpandEnv(config.Monitor.Remote.BaseURL)
 	}
 
+	applyWorkerAIFallback(&config.Worker.Remote)
+
 	return *config
+}
+
+// applyWorkerAIFallback uses WORKER_AI_* when set, otherwise falls back to AI_*.
+func applyWorkerAIFallback(remote *RemoteConfig) {
+	if remote == nil {
+		return
+	}
+	if strings.TrimSpace(remote.BaseURL) == "" {
+		if v := strings.TrimSpace(os.Getenv("WORKER_AI_BASE_URL")); v != "" {
+			remote.BaseURL = v
+		} else if v := strings.TrimSpace(os.Getenv("AI_BASE_URL")); v != "" {
+			remote.BaseURL = v
+		}
+	}
+	if strings.TrimSpace(remote.APIKey) == "" {
+		if v := strings.TrimSpace(os.Getenv("WORKER_AI_API_KEY")); v != "" {
+			remote.APIKey = v
+		} else if v := strings.TrimSpace(os.Getenv("AI_API_KEY")); v != "" {
+			remote.APIKey = v
+		}
+	}
 }
 
 // GetPlannerConfig 获取架构配置
