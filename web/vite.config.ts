@@ -17,6 +17,7 @@ export default defineConfig({
       '/novels': 'http://localhost:8082',
       '/conversation': 'http://localhost:8082',
       '/outputs': 'http://localhost:8082',
+      '/observability': 'http://localhost:8082',
     },
   },
   build: {

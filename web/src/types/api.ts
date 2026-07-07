@@ -232,6 +232,42 @@ export interface PendingWorkflow {
   params?: Record<string, string>;
 }
 
+export interface AIRoleStats {
+  role: string;
+  model?: string;
+  requests_ok: number;
+  requests_error: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  avg_duration_seconds?: number;
+}
+
+export interface MetricsSummary {
+  generated_at: string;
+  ai_by_role: AIRoleStats[];
+  ai_requests_ok: number;
+  ai_requests_error: number;
+  ai_tokens_prompt: number;
+  ai_tokens_completion: number;
+  task_completions: Record<string, number>;
+  quality_checks_passed: number;
+  quality_checks_failed: number;
+  workflow_reconciles: Record<string, number>;
+  prometheus_metrics_path: string;
+}
+
+export interface ClusterStats {
+  tasks_by_phase: Record<string, number>;
+  workflows_by_phase: Record<string, number>;
+  tasks_total: number;
+  workflows_total: number;
+}
+
+export interface ObservabilityReport {
+  metrics: MetricsSummary;
+  cluster: ClusterStats;
+}
+
 export interface TaskEvent {
   task_name?: string;
   namespace?: string;

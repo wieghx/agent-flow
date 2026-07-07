@@ -13,6 +13,7 @@ import type {
   PendingTask,
   PendingWorkflow,
   TaskSummary,
+  ObservabilityReport,
   TokenReport,
   WorkflowDetail,
   WorkflowSummary,
@@ -48,6 +49,10 @@ export async function fetchNovelDetail(namespace: string, name: string): Promise
 
 export async function fetchTokenReport(): Promise<TokenReport> {
   return request<TokenReport>('/novels/tokens/report');
+}
+
+export async function fetchObservability(): Promise<ObservabilityReport> {
+  return request<ObservabilityReport>('/observability');
 }
 
 export async function fetchNovelChapters(namespace: string, name: string): Promise<ChapterSummary[]> {

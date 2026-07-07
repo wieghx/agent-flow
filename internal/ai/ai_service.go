@@ -2,8 +2,10 @@ package ai
 
 import (
 	"context"
+	"time"
 
 	"agent-flow/internal/config"
+	"agent-flow/internal/metrics"
 )
 
 // AIService AI 服务接口
@@ -98,17 +100,30 @@ func (s *Service) Config() *config.AIConfig {
 
 // PlannerChat 调用架构 AI
 func (s *Service) PlannerChat(ctx context.Context, systemPrompt, userMessage string) (ChatResult, error) {
-	return s.planner.Chat(ctx, systemPrompt, userMessage)
+	return s.recordChat("planner", s.config.GetPlannerModel(), func() (ChatResult, error) {
+		return s.planner.Chat(ctx, systemPrompt, userMessage)
+	})
 }
 
 // WorkerChat 调用执行者 AI
 func (s *Service) WorkerChat(ctx context.Context, systemPrompt, userMessage string) (ChatResult, error) {
-	return s.worker.Chat(ctx, systemPrompt, userMessage)
+	return s.recordChat("worker", s.config.GetWorkerModel(), func() (ChatResult, error) {
+		return s.worker.Chat(ctx, systemPrompt, userMessage)
+	})
 }
 
 // MonitorChat 调用监工 AI
 func (s *Service) MonitorChat(ctx context.Context, systemPrompt, userMessage string) (ChatResult, error) {
-	return s.monitor.Chat(ctx, systemPrompt, userMessage)
+	return s.recordChat("monitor", s.config.GetMonitorModel(), func() (ChatResult, error) {
+		return s.monitor.Chat(ctx, systemPrompt, userMessage)
+	})
+}
+
+func (s *Service) recordChat(role, model string, fn func() (ChatResult, error)) (ChatResult, error) {
+	start := time.Now()
+	result, err := fn()
+	metrics.RecordAIRequest(role, model, err, time.Since(start), result.Usage.PromptTokens, result.Usage.CompletionTokens)
+	return result, err
 }
 
 // CheckAll 检查所有 AI 服务

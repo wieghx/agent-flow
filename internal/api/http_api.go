@@ -84,6 +84,7 @@ func (a *API) setupRoutes() {
 	a.mux.HandleFunc("/novels/", a.handleNovelRoutes)
 	a.mux.HandleFunc("/novels", a.handleNovelList)
 	a.mux.HandleFunc("/outputs/", a.handleOutputFile)
+	a.mux.HandleFunc("/observability", a.handleObservability)
 }
 
 // ServeHTTP 实现 http.Handler 接口 - 使用 corsHandler 包装整个 mux

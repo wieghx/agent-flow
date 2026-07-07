@@ -10,6 +10,7 @@ import (
 	agentflowiov1alpha1 "agent-flow/api/v1alpha1"
 	"agent-flow/internal/ai"
 	"agent-flow/internal/flow"
+	"agent-flow/internal/metrics"
 	"agent-flow/internal/store"
 	wfengine "agent-flow/internal/workflow"
 
@@ -39,9 +40,14 @@ type WorkflowController struct {
 // +kubebuilder:rbac:groups=agentflow.io,resources=workflows/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=agentflow.io,resources=tasks,verbs=get;list;watch;create;update;patch;delete
 
-func (c *WorkflowController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (c *WorkflowController) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
+	start := time.Now()
+	defer func() {
+		metrics.RecordWorkflowReconcile(metrics.WorkflowReconcileResult(err, result.Requeue, result.RequeueAfter), time.Since(start))
+	}()
+
 	wf := &agentflowiov1alpha1.Workflow{}
-	if err := c.Get(ctx, req.NamespacedName, wf); err != nil {
+	if err = c.Get(ctx, req.NamespacedName, wf); err != nil {
 		if k8serrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
@@ -49,7 +55,7 @@ func (c *WorkflowController) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	if wf.Status.Phase == "" {
-		if err := c.initWorkflow(ctx, wf); err != nil {
+		if err = c.initWorkflow(ctx, wf); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{Requeue: true}, nil
@@ -60,16 +66,17 @@ func (c *WorkflowController) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, nil
 	}
 
-	if err := wfengine.EnsureWorkspace(wf); err != nil {
+	if err = wfengine.EnsureWorkspace(wf); err != nil {
 		return c.failWorkflow(ctx, wf, fmt.Errorf("workspace init failed: %w", err))
 	}
 	c.backfillStoreFromWorkspace(ctx, wf)
 
-	if err := c.syncRunningTasks(ctx, wf); err != nil {
+	if err = c.syncRunningTasks(ctx, wf); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	resolved, err := wfengine.ResolveSteps(wf)
+	var resolved []wfengine.ResolvedStep
+	resolved, err = wfengine.ResolveSteps(wf)
 	if err != nil {
 		if wfengine.OutlineReady(wf) {
 			return c.failWorkflow(ctx, wf, err)

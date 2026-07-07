@@ -13,6 +13,7 @@ import (
 	"agent-flow/internal/cache"
 	"agent-flow/internal/config"
 	"agent-flow/internal/flow"
+	"agent-flow/internal/metrics"
 	applog "agent-flow/internal/log"
 	retryutil "agent-flow/internal/retry"
 	wfengine "agent-flow/internal/workflow"
@@ -273,6 +274,7 @@ func (p *TaskPlannerEino) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			if err := p.Status().Update(ctx, task); err != nil {
 				return ctrl.Result{}, fmt.Errorf("更新 Task 状态失败：%w", err)
 			}
+			metrics.RecordTaskCompletion(string(task.Status.Phase))
 			p.publishTaskEvent(ctx, task, cache.EventStepSucceeded, task.Status.Message, 0, 100)
 			_ = p.clearCheckpoint(ctx, task)
 			p.sendTaskFeedback(task, workerState.WorkerOutput)
@@ -308,8 +310,10 @@ func (p *TaskPlannerEino) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			if task.Status.QualityCheck != nil {
 				score = task.Status.QualityCheck.Score
 			}
+			metrics.RecordTaskCompletion(string(task.Status.Phase))
 			p.publishTaskEvent(ctx, task, cache.EventStepSucceeded, task.Status.Message, int(task.Status.Retries), int(score))
 		} else if task.Status.Phase == agentflowiov1alpha1.TaskPhaseFailed {
+			metrics.RecordTaskCompletion(string(task.Status.Phase))
 			p.publishTaskEvent(ctx, task, cache.EventStepFailed, task.Status.Message, int(task.Status.Retries), 0)
 		}
 		_ = p.clearCheckpoint(ctx, task)

@@ -10,6 +10,7 @@ import (
 	"unicode"
 
 	"agent-flow/internal/ai"
+	"agent-flow/internal/metrics"
 	wfengine "agent-flow/internal/workflow"
 )
 
@@ -534,6 +535,7 @@ func EvaluateWithAI(ctx context.Context, aiSvc *ai.Service, systemPrompt, instru
 		eval.TaskType = ruleHint.TaskType
 	}
 	eval.Attempt = attempt
+	metrics.RecordQualityCheck(eval.Passed, eval.CheckMethod)
 	return eval, nil
 }
 

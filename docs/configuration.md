@@ -226,6 +226,28 @@ export RAG_EMBEDDING_API_KEY="${AI_API_KEY}"
 export RAG_EMBEDDING_MODEL="text-embedding-3-small"
 ```
 
+### 可观测性（Prometheus + API）
+
+Manager Pod 在 `:8080/metrics` 暴露 Prometheus 指标（Deployment 已标注 `prometheus.io/scrape`）。
+
+| 指标 | 说明 |
+|------|------|
+| `agentflow_ai_requests_total` | AI 请求数（role / model / status） |
+| `agentflow_ai_request_duration_seconds` | AI 请求延迟 |
+| `agentflow_ai_tokens_total` | 进程内累计 Token（role / prompt\|completion） |
+| `agentflow_task_completions_total` | Task 终态（Succeeded / Failed） |
+| `agentflow_quality_checks_total` | 质检通过/失败 |
+| `agentflow_workflow_reconciles_total` | Workflow reconcile 结果 |
+
+HTTP API 汇总（Web 监控面板用）：
+
+```bash
+curl -s http://127.0.0.1:18082/observability
+# 或经 Web 代理: http://localhost:3000/observability
+```
+
+返回进程 Prometheus 快照 + 集群 Task/Workflow 按 phase 计数。小说 Token 累计仍见 `/novels/tokens/report`（SQLite）。
+
 ### 结构化日志
 
 控制器与二进制使用 `log/slog`，通过环境变量配置：
