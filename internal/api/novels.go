@@ -42,7 +42,10 @@ type NovelSummary struct {
 	OutlineURL      string            `json:"outline_url,omitempty"`
 	CreatedAt       string            `json:"created_at"`
 	UpdatedAt       string            `json:"updated_at,omitempty"`
-	CompletionAt    string            `json:"completion_at,omitempty"`
+	CompletionAt     string            `json:"completion_at,omitempty"`
+	PromptTokens     int               `json:"prompt_tokens,omitempty"`
+	CompletionTokens int               `json:"completion_tokens,omitempty"`
+	TotalTokens      int               `json:"total_tokens,omitempty"`
 }
 
 // ImportNovelRequest imports an existing novel text and runs 拆书 + optional续写.
@@ -110,6 +113,8 @@ func (a *API) handleNovelRoutes(w http.ResponseWriter, r *http.Request) {
 		a.handleNovelRegenerateChapter(w, r, namespace, name, chNum)
 	case action == "rag" && len(parts) >= 4 && parts[3] == "search" && r.Method == http.MethodGet:
 		a.handleNovelRAGSearch(w, r, namespace, name)
+	case action == "chapters" && r.Method == http.MethodGet:
+		a.handleNovelChapters(w, r, namespace, name)
 	case action == "outline" && (r.Method == http.MethodGet || r.Method == http.MethodPut):
 		a.handleNovelOutline(w, r, namespace, name)
 	case action == "resume" && r.Method == http.MethodPost:
@@ -413,18 +418,21 @@ func (a *API) buildSummaryFromWorkflow(wf *agentflowiov1alpha1.Workflow, lib *st
 
 func (a *API) buildSummaryFromDB(lib *store.LibraryEntry) NovelSummary {
 	s := NovelSummary{
-		Namespace:       lib.Namespace,
-		Name:            lib.Name,
-		Title:           lib.Title,
-		Synopsis:        lib.Synopsis,
-		Phase:           "Unknown",
-		ChapterCount:    lib.ChapterCount,
-		ChaptersDone:    lib.DoneChapters,
-		ChaptersWriting: lib.WritingChapters,
-		ChaptersFailed:  lib.FailedChapters,
-		WorkspacePath:   lib.WorkspacePath,
-		CreatedAt:       store.FormatLibraryTime(lib.CreatedAt),
-		UpdatedAt:       store.FormatLibraryTime(lib.UpdatedAt),
+		Namespace:        lib.Namespace,
+		Name:             lib.Name,
+		Title:            lib.Title,
+		Synopsis:         lib.Synopsis,
+		Phase:            "Unknown",
+		ChapterCount:     lib.ChapterCount,
+		ChaptersDone:     lib.DoneChapters,
+		ChaptersWriting:  lib.WritingChapters,
+		ChaptersFailed:   lib.FailedChapters,
+		PromptTokens:     lib.PromptTokens,
+		CompletionTokens: lib.CompletionTokens,
+		TotalTokens:      lib.TotalTokens,
+		WorkspacePath:    lib.WorkspacePath,
+		CreatedAt:        store.FormatLibraryTime(lib.CreatedAt),
+		UpdatedAt:        store.FormatLibraryTime(lib.UpdatedAt),
 	}
 	if lib.DoneChapters > 0 && lib.ChapterCount > 0 {
 		s.Progress = int32(lib.DoneChapters * 100 / lib.ChapterCount)
@@ -434,6 +442,9 @@ func (a *API) buildSummaryFromDB(lib *store.LibraryEntry) NovelSummary {
 }
 
 func (a *API) applyLibraryEntry(s *NovelSummary, lib *store.LibraryEntry) {
+	s.PromptTokens = lib.PromptTokens
+	s.CompletionTokens = lib.CompletionTokens
+	s.TotalTokens = lib.TotalTokens
 	if lib.Title != "" {
 		s.Title = lib.Title
 	}

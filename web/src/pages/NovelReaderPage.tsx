@@ -3,12 +3,14 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Pagination } from '@/components/Pagination';
 import { pageForIndex, usePagination } from '@/hooks/usePagination';
 import {
+  fetchNovelChapters,
   fetchNovels,
   fetchTextAsset,
   fetchWorkflowDetail,
   fetchWorkflows,
   regenerateChapter,
 } from '@/api/client';
+import { formatTokenCount } from '@/lib/tokens';
 import { usePolling } from '@/hooks/usePolling';
 import { chapterNumFromStepId, chapterUrlFromStep } from '@/lib/paths';
 import { PhaseBadge } from '@/components/PhaseBadge';
@@ -39,6 +41,7 @@ export function NovelReaderPage() {
   const [rewriteJob, setRewriteJob] = useState<string | null>(null);
   const [rewriteStatus, setRewriteStatus] = useState<string | null>(null);
   const [showOutline, setShowOutline] = useState(false);
+  const [chapterStats, setChapterStats] = useState<Record<number, { total_tokens?: number }>>({});
 
   const activeName = workflowName || workflows[0]?.name || '';
   const activeNovel = novels.find((n) => n.namespace === namespace && n.name === activeName);
@@ -60,6 +63,19 @@ export function NovelReaderPage() {
     const id = window.setInterval(loadDetail, 15000);
     return () => window.clearInterval(id);
   }, [loadDetail]);
+
+  useEffect(() => {
+    if (!activeName) return;
+    fetchNovelChapters(namespace, activeName)
+      .then((rows) => {
+        const map: Record<number, { total_tokens?: number }> = {};
+        for (const ch of rows) {
+          map[ch.num] = { total_tokens: ch.total_tokens };
+        }
+        setChapterStats(map);
+      })
+      .catch(() => setChapterStats({}));
+  }, [activeName, namespace, detail?.status?.completedSteps?.length]);
 
   const status = detail?.status;
   const workspace = status?.workspacePath;
@@ -231,6 +247,16 @@ export function NovelReaderPage() {
               <span className="text-gray-400">{status.progress?.percent ?? 0}%</span>
             </div>
             <p className="text-gray-500">{status.message}</p>
+            {activeNovel?.total_tokens ? (
+              <p className="text-gray-500">
+                全书 Token {formatTokenCount(activeNovel.total_tokens)}
+                <span className="text-gray-600">
+                  {' '}
+                  (输入 {formatTokenCount(activeNovel.prompt_tokens)} / 输出{' '}
+                  {formatTokenCount(activeNovel.completion_tokens)})
+                </span>
+              </p>
+            ) : null}
             {rewriteStatus && (
               <p className="text-amber-400">重写进行中… ({rewriteStatus})</p>
             )}
@@ -265,18 +291,27 @@ export function NovelReaderPage() {
             />
           )}
           <div className="space-y-1">
-            {pagedChapters.map((ch) => (
-              <button
-                key={ch}
-                type="button"
-                onClick={() => onSelectChapter(ch)}
-                className={`w-full text-left px-3 py-2 rounded text-sm ${
-                  selectedChapter === ch ? 'bg-primary/30 border border-primary/50' : 'hover:bg-dark-bg'
-                }`}
-              >
-                {ch}
-              </button>
-            ))}
+            {pagedChapters.map((ch) => {
+              const num = chapterNumFromStepId(ch);
+              const tokens = num ? chapterStats[num]?.total_tokens : undefined;
+              return (
+                <button
+                  key={ch}
+                  type="button"
+                  onClick={() => onSelectChapter(ch)}
+                  className={`w-full text-left px-3 py-2 rounded text-sm ${
+                    selectedChapter === ch ? 'bg-primary/30 border border-primary/50' : 'hover:bg-dark-bg'
+                  }`}
+                >
+                  <span className="flex items-center justify-between gap-2">
+                    <span>{ch}</span>
+                    {tokens ? (
+                      <span className="text-[10px] text-gray-500 shrink-0">{formatTokenCount(tokens)}</span>
+                    ) : null}
+                  </span>
+                </button>
+              );
+            })}
             {completedChapters.length === 0 && <p className="text-xs text-gray-600">尚无落盘章节</p>}
           </div>
         </div>
@@ -291,6 +326,12 @@ export function NovelReaderPage() {
         <div className="flex items-center justify-between gap-3 px-6 py-3 border-b border-dark-border bg-dark-card/50">
           <p className="text-sm text-gray-400 truncate">
             {selectedChapter ? `阅读 ${selectedChapter}` : '未选择章节'}
+            {selectedChapter && chapterNumFromStepId(selectedChapter) ? (
+              <span className="text-gray-600">
+                {' '}
+                · Token {formatTokenCount(chapterStats[chapterNumFromStepId(selectedChapter)!]?.total_tokens)}
+              </span>
+            ) : null}
           </p>
           <button
             type="button"

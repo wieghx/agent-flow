@@ -8,7 +8,7 @@ import (
 
 // AIService AI 服务接口
 type AIService interface {
-	Chat(ctx context.Context, systemPrompt, userMessage string) (string, error)
+	Chat(ctx context.Context, systemPrompt, userMessage string) (ChatResult, error)
 	Check(ctx context.Context) error
 	GetModel() string
 }
@@ -97,17 +97,17 @@ func (s *Service) Config() *config.AIConfig {
 }
 
 // PlannerChat 调用架构 AI
-func (s *Service) PlannerChat(ctx context.Context, systemPrompt, userMessage string) (string, error) {
+func (s *Service) PlannerChat(ctx context.Context, systemPrompt, userMessage string) (ChatResult, error) {
 	return s.planner.Chat(ctx, systemPrompt, userMessage)
 }
 
 // WorkerChat 调用执行者 AI
-func (s *Service) WorkerChat(ctx context.Context, systemPrompt, userMessage string) (string, error) {
+func (s *Service) WorkerChat(ctx context.Context, systemPrompt, userMessage string) (ChatResult, error) {
 	return s.worker.Chat(ctx, systemPrompt, userMessage)
 }
 
 // MonitorChat 调用监工 AI
-func (s *Service) MonitorChat(ctx context.Context, systemPrompt, userMessage string) (string, error) {
+func (s *Service) MonitorChat(ctx context.Context, systemPrompt, userMessage string) (ChatResult, error) {
 	return s.monitor.Chat(ctx, systemPrompt, userMessage)
 }
 

@@ -275,7 +275,8 @@ func (r *ChatRouter) generateResponse(userMessage string) (Message, *TaskRequest
 			userMsg = fmt.Sprintf("对话历史:\n%s\n\n用户新消息: %s", historyContext, userMessage)
 		}
 
-		resp, err := r.aiService.PlannerChat(context.Background(), systemPrompt, userMsg)
+		chatResult, err := r.aiService.PlannerChat(context.Background(), systemPrompt, userMsg)
+		resp := chatResult.Content
 		if err == nil && resp != "" {
 			var workflowRequest *WorkflowRequest
 			resp, workflowRequest = parseWorkflowMarker(resp)

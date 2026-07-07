@@ -1,0 +1,11 @@
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd -u 1000 -m -s /usr/sbin/nologin sidecar
+
+COPY bin/sing-box /usr/local/bin/sing-box
+RUN chmod +x /usr/local/bin/sing-box && chown sidecar:sidecar /usr/local/bin/sing-box
+
+USER sidecar
+ENTRYPOINT ["/usr/local/bin/sing-box", "run", "-c", "/etc/sing-box/config.json", "--disable-color"]

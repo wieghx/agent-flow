@@ -58,6 +58,14 @@ type TaskOutput struct {
 }
 
 // +k8s:deepcopy-gen=true
+// TokenUsage records LLM token consumption for a task.
+type TokenUsage struct {
+	PromptTokens     int32 `json:"promptTokens,omitempty"`
+	CompletionTokens int32 `json:"completionTokens,omitempty"`
+	TotalTokens      int32 `json:"totalTokens,omitempty"`
+}
+
+// +k8s:deepcopy-gen=true
 // QualityDimensions holds per-dimension evaluation scores.
 type QualityDimensions struct {
 	Completeness int32 `json:"completeness,omitempty"`
@@ -125,6 +133,9 @@ type TaskStatus struct {
 
 	// QualityCheck is the quality evaluation result from Monitor
 	QualityCheck *QualityCheck `json:"qualityCheck,omitempty"`
+
+	// TokenUsage is cumulative LLM token consumption for this task.
+	TokenUsage *TokenUsage `json:"tokenUsage,omitempty"`
 
 	// WorkerName is the name of the worker that executed this task
 	WorkerName string `json:"workerName,omitempty"`

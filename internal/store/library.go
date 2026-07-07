@@ -9,17 +9,20 @@ import (
 
 // LibraryEntry is novel metadata for the library API.
 type LibraryEntry struct {
-	Namespace       string    `json:"namespace"`
-	Name            string    `json:"name"`
-	Title           string    `json:"title"`
-	Synopsis        string    `json:"synopsis"`
-	ChapterCount    int       `json:"chapter_count"`
-	DoneChapters    int       `json:"chapters_done"`
-	WritingChapters int       `json:"chapters_writing"`
-	FailedChapters  int       `json:"chapters_failed"`
-	WorkspacePath   string    `json:"workspace_path"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	Namespace        string    `json:"namespace"`
+	Name             string    `json:"name"`
+	Title            string    `json:"title"`
+	Synopsis         string    `json:"synopsis"`
+	ChapterCount     int       `json:"chapter_count"`
+	DoneChapters     int       `json:"chapters_done"`
+	WritingChapters  int       `json:"chapters_writing"`
+	FailedChapters   int       `json:"chapters_failed"`
+	PromptTokens     int       `json:"prompt_tokens"`
+	CompletionTokens int       `json:"completion_tokens"`
+	TotalTokens      int       `json:"total_tokens"`
+	WorkspacePath    string    `json:"workspace_path"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 // ListLibrary returns all novel rows with chapter stats.
@@ -27,6 +30,7 @@ func (s *SQLStore) ListLibrary(ctx context.Context) ([]LibraryEntry, error) {
 	rows, err := s.db.QueryContext(ctx, s.q(`
 		SELECT n.namespace, n.name, COALESCE(n.title,''), COALESCE(n.synopsis,''),
 			n.chapter_count, COALESCE(n.workspace_path,''), n.created_at, n.updated_at,
+			COALESCE(n.prompt_tokens, 0), COALESCE(n.completion_tokens, 0), COALESCE(n.total_tokens, 0),
 			COALESCE(SUM(CASE WHEN c.status = 'done' THEN 1 ELSE 0 END), 0),
 			COALESCE(SUM(CASE WHEN c.status = 'writing' THEN 1 ELSE 0 END), 0),
 			COALESCE(SUM(CASE WHEN c.status = 'failed' THEN 1 ELSE 0 END), 0)
@@ -37,12 +41,14 @@ func (s *SQLStore) ListLibrary(ctx context.Context) ([]LibraryEntry, error) {
 	`, `
 		SELECT n.namespace, n.name, COALESCE(n.title,''), COALESCE(n.synopsis,''),
 			n.chapter_count, COALESCE(n.workspace_path,''), n.created_at, n.updated_at,
+			COALESCE(n.prompt_tokens, 0), COALESCE(n.completion_tokens, 0), COALESCE(n.total_tokens, 0),
 			COALESCE(SUM(CASE WHEN c.status = 'done' THEN 1 ELSE 0 END), 0),
 			COALESCE(SUM(CASE WHEN c.status = 'writing' THEN 1 ELSE 0 END), 0),
 			COALESCE(SUM(CASE WHEN c.status = 'failed' THEN 1 ELSE 0 END), 0)
 		FROM novels n
 		LEFT JOIN chapters c ON c.novel_id = n.id
-		GROUP BY n.id, n.namespace, n.name, n.title, n.synopsis, n.chapter_count, n.workspace_path, n.created_at, n.updated_at
+		GROUP BY n.id, n.namespace, n.name, n.title, n.synopsis, n.chapter_count, n.workspace_path,
+			n.created_at, n.updated_at, n.prompt_tokens, n.completion_tokens, n.total_tokens
 		ORDER BY n.updated_at DESC
 	`))
 	if err != nil {
@@ -57,6 +63,7 @@ func (s *SQLStore) GetLibrary(ctx context.Context, namespace, name string) (*Lib
 	row := s.db.QueryRowContext(ctx, s.q(`
 		SELECT n.namespace, n.name, COALESCE(n.title,''), COALESCE(n.synopsis,''),
 			n.chapter_count, COALESCE(n.workspace_path,''), n.created_at, n.updated_at,
+			COALESCE(n.prompt_tokens, 0), COALESCE(n.completion_tokens, 0), COALESCE(n.total_tokens, 0),
 			COALESCE(SUM(CASE WHEN c.status = 'done' THEN 1 ELSE 0 END), 0),
 			COALESCE(SUM(CASE WHEN c.status = 'writing' THEN 1 ELSE 0 END), 0),
 			COALESCE(SUM(CASE WHEN c.status = 'failed' THEN 1 ELSE 0 END), 0)
@@ -67,13 +74,15 @@ func (s *SQLStore) GetLibrary(ctx context.Context, namespace, name string) (*Lib
 	`, `
 		SELECT n.namespace, n.name, COALESCE(n.title,''), COALESCE(n.synopsis,''),
 			n.chapter_count, COALESCE(n.workspace_path,''), n.created_at, n.updated_at,
+			COALESCE(n.prompt_tokens, 0), COALESCE(n.completion_tokens, 0), COALESCE(n.total_tokens, 0),
 			COALESCE(SUM(CASE WHEN c.status = 'done' THEN 1 ELSE 0 END), 0),
 			COALESCE(SUM(CASE WHEN c.status = 'writing' THEN 1 ELSE 0 END), 0),
 			COALESCE(SUM(CASE WHEN c.status = 'failed' THEN 1 ELSE 0 END), 0)
 		FROM novels n
 		LEFT JOIN chapters c ON c.novel_id = n.id
 		WHERE n.namespace = $1 AND n.name = $2
-		GROUP BY n.id, n.namespace, n.name, n.title, n.synopsis, n.chapter_count, n.workspace_path, n.created_at, n.updated_at
+		GROUP BY n.id, n.namespace, n.name, n.title, n.synopsis, n.chapter_count, n.workspace_path,
+			n.created_at, n.updated_at, n.prompt_tokens, n.completion_tokens, n.total_tokens
 	`), namespace, name)
 	entry, err := scanLibraryRow(row)
 	if err == sql.ErrNoRows {
@@ -116,6 +125,7 @@ func scanLibraryRow(row libraryScanner) (*LibraryEntry, error) {
 	err := row.Scan(
 		&e.Namespace, &e.Name, &e.Title, &e.Synopsis,
 		&e.ChapterCount, &e.WorkspacePath, &created, &updated,
+		&e.PromptTokens, &e.CompletionTokens, &e.TotalTokens,
 		&e.DoneChapters, &e.WritingChapters, &e.FailedChapters,
 	)
 	if err != nil {

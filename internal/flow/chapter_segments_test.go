@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"agent-flow/internal/ai"
 	wfengine "agent-flow/internal/workflow"
 )
 
@@ -14,16 +15,16 @@ type stubChapterWriter struct {
 	calls   int
 }
 
-func (s *stubChapterWriter) WorkerChat(_ context.Context, _, userMessage string) (string, error) {
+func (s *stubChapterWriter) WorkerChat(_ context.Context, _, userMessage string) (ai.ChatResult, error) {
 	if s.calls >= len(s.replies) {
-		return "", fmt.Errorf("no more replies")
+		return ai.ChatResult{}, fmt.Errorf("no more replies")
 	}
 	out := s.replies[s.calls]
 	s.calls++
 	if !strings.Contains(userMessage, "【本段写作任务】") {
-		return "", fmt.Errorf("missing segment task block")
+		return ai.ChatResult{}, fmt.Errorf("missing segment task block")
 	}
-	return out, nil
+	return ai.ChatResult{Content: out, Usage: ai.TokenUsage{PromptTokens: 10, CompletionTokens: 20, TotalTokens: 30}}, nil
 }
 
 func TestGenerateSegmentedChapter(t *testing.T) {
@@ -33,9 +34,12 @@ func TestGenerateSegmentedChapter(t *testing.T) {
 	writer := &stubChapterWriter{
 		replies: []string{segText, segText, segText},
 	}
-	out, err := GenerateSegmentedChapter(context.Background(), writer, instruction, "")
+	out, usage, err := GenerateSegmentedChapter(context.Background(), writer, instruction, "")
 	if err != nil {
 		t.Fatalf("GenerateSegmentedChapter failed: %v", err)
+	}
+	if usage.TotalTokens != 90 {
+		t.Fatalf("expected 90 total tokens, got %d", usage.TotalTokens)
 	}
 	if writer.calls != 3 {
 		t.Fatalf("expected 3 segment calls, got %d", writer.calls)
@@ -53,7 +57,7 @@ func TestGenerateSegmentedChapterRetriesShortSegment(t *testing.T) {
 	writer := &stubChapterWriter{
 		replies: []string{short, long, long},
 	}
-	out, err := GenerateSegmentedChapter(context.Background(), writer, instruction, "")
+	out, _, err := GenerateSegmentedChapter(context.Background(), writer, instruction, "")
 	if err != nil {
 		t.Fatalf("GenerateSegmentedChapter failed: %v", err)
 	}

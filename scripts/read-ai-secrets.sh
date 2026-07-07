@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Reads AI_API_KEY and AI_BASE_URL from env or config/ai_config.local.yaml (never committed).
+# Reads AI credentials from env or config/ai_config.local.yaml (never committed).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -23,20 +23,21 @@ def pick(d, *keys):
         cur = cur.get(k) or {}
     return cur if isinstance(cur, str) else ""
 
-if field == "api_key":
-    for role in ("planner", "worker", "monitor"):
-        v = pick(data, role, "remote", "api_key")
-        if v:
-            print(v)
-            break
-elif field == "base_url":
-    for role in ("planner", "worker", "monitor"):
-        v = pick(data, role, "remote", "base_url")
-        if v:
-            print(v)
-            break
+roles = {
+    "api_key": "planner",
+    "base_url": "planner",
+    "worker_api_key": "worker",
+    "worker_base_url": "worker",
+}
+role = roles.get(field)
+if role:
+    v = pick(data, role, "remote", field.removeprefix("worker_"))
+    if v:
+        print(v)
 PY
 }
 
 export AI_API_KEY="${AI_API_KEY:-$(read_from_local api_key)}"
 export AI_BASE_URL="${AI_BASE_URL:-$(read_from_local base_url)}"
+export WORKER_AI_API_KEY="${WORKER_AI_API_KEY:-$(read_from_local worker_api_key)}"
+export WORKER_AI_BASE_URL="${WORKER_AI_BASE_URL:-$(read_from_local worker_base_url)}"

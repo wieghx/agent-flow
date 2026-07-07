@@ -112,13 +112,17 @@ spec:
         - name: SANDBOX_NETWORK_POLICY_ENABLED
           value: "false"
         - name: HTTP_PROXY
-          value: ""
+          value: "http://127.0.0.1:10810"
         - name: HTTPS_PROXY
-          value: ""
+          value: "http://127.0.0.1:10810"
         - name: http_proxy
-          value: ""
+          value: "http://127.0.0.1:10810"
         - name: https_proxy
-          value: ""
+          value: "http://127.0.0.1:10810"
+        - name: NO_PROXY
+          value: "localhost,127.0.0.1,10.96.0.0/16,10.244.0.0/16,api.deepseek.com,.svc,.cluster.local"
+        - name: no_proxy
+          value: "localhost,127.0.0.1,10.96.0.0/16,10.244.0.0/16,api.deepseek.com,.svc,.cluster.local"
         - name: AI_API_KEY
           valueFrom:
             secretKeyRef:
@@ -131,7 +135,50 @@ spec:
               name: ai-secrets
               key: AI_BASE_URL
               optional: true
+        - name: WORKER_AI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-secrets
+              key: WORKER_AI_API_KEY
+              optional: true
+        - name: WORKER_AI_BASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: ai-secrets
+              key: WORKER_AI_BASE_URL
+              optional: true
+      - name: proxy-sidecar
+        image: kind-local:5000/minagflow/proxy-sidecar:latest
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - "ALL"
+        volumeMounts:
+        - name: proxy-sidecar-config
+          mountPath: /etc/sing-box
+          readOnly: true
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+        readinessProbe:
+          tcpSocket:
+            port: 10810
+          initialDelaySeconds: 2
+          periodSeconds: 5
       volumes:
+      - name: proxy-sidecar-config
+        secret:
+          secretName: proxy-sidecar-config
+          optional: false
       - name: ai-config
         configMap:
           name: ai-config

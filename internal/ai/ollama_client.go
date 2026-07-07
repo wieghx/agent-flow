@@ -46,13 +46,15 @@ type OllamaOptions struct {
 
 // OllamaChatResponse 聊天响应
 type OllamaChatResponse struct {
-	Model     string `json:"model"`
-	CreatedAt string `json:"created_at"`
-	Message   struct {
+	Model            string `json:"model"`
+	CreatedAt        string `json:"created_at"`
+	Message          struct {
 		Role    string `json:"role"`
 		Content string `json:"content"`
 	} `json:"message"`
-	Done bool `json:"done"`
+	Done             bool `json:"done"`
+	PromptEvalCount  int  `json:"prompt_eval_count"`
+	EvalCount        int  `json:"eval_count"`
 }
 
 // NewOllamaClient 创建 Ollama 客户端
@@ -71,7 +73,7 @@ func NewOllamaClient(localConfig *config.LocalConfig) *OllamaClient {
 }
 
 // Chat 发送聊天请求
-func (c *OllamaClient) Chat(ctx context.Context, systemPrompt, userMessage string) (string, error) {
+func (c *OllamaClient) Chat(ctx context.Context, systemPrompt, userMessage string) (ChatResult, error) {
 	url := c.baseURL + "/api/chat"
 
 	request := OllamaChatRequest{
@@ -96,33 +98,38 @@ func (c *OllamaClient) Chat(ctx context.Context, systemPrompt, userMessage strin
 
 	jsonData, err := json.Marshal(request)
 	if err != nil {
-		return "", fmt.Errorf("序列化请求失败：%w", err)
+		return ChatResult{}, fmt.Errorf("序列化请求失败：%w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return "", fmt.Errorf("创建请求失败：%w", err)
+		return ChatResult{}, fmt.Errorf("创建请求失败：%w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("发送请求失败：%w", err)
+		return ChatResult{}, fmt.Errorf("发送请求失败：%w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("API 返回错误状态：%d, 响应：%s", resp.StatusCode, string(body))
+		return ChatResult{}, fmt.Errorf("API 返回错误状态：%d, 响应：%s", resp.StatusCode, string(body))
 	}
 
 	var ollamaResp OllamaChatResponse
 	if err := json.NewDecoder(resp.Body).Decode(&ollamaResp); err != nil {
-		return "", fmt.Errorf("解析响应失败：%w", err)
+		return ChatResult{}, fmt.Errorf("解析响应失败：%w", err)
 	}
 
-	return ollamaResp.Message.Content, nil
+	usage := TokenUsage{
+		PromptTokens:     ollamaResp.PromptEvalCount,
+		CompletionTokens: ollamaResp.EvalCount,
+		TotalTokens:      ollamaResp.PromptEvalCount + ollamaResp.EvalCount,
+	}
+	return ChatResult{Content: ollamaResp.Message.Content, Usage: usage}, nil
 }
 
 // Generate 生成文本（非聊天模式）

@@ -26,5 +26,6 @@ config/manager/.claude/
 
 # Local config overrides
 config/ai_config.local.yaml
+config/proxy-sidecar.local.json
 .env
 .env.*

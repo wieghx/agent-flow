@@ -2,7 +2,7 @@
 # Committed ai_config.yaml uses placeholders only — never put real keys in git.
 
 global:
-  default_model: Qwen3.5-35B-A3B
+  default_model: deepseek-chat
   system_prompt: |
     你是一个任务编排助手，负责帮助用户分析和分配任务。
     你的职责是：
@@ -18,9 +18,9 @@ planner:
     enabled: true
     base_url: ${AI_BASE_URL}
     api_key: ${AI_API_KEY}
-    model: Qwen3.5-35B-A3B
+    model: deepseek-chat
     temperature: 0.7
-    max_tokens: 65536
+    max_tokens: 8192
     timeout_seconds: 300
     request:
       headers:
@@ -62,7 +62,7 @@ worker:
     enabled: true
     base_url: ${AI_BASE_URL}
     api_key: ${AI_API_KEY}
-    model: Qwen3.5-35B-A3B
+    model: deepseek-chat
     temperature: 0.7
     max_tokens: 8192
     timeout_seconds: 300
@@ -110,7 +110,7 @@ monitor:
     enabled: true
     base_url: ${AI_BASE_URL}
     api_key: ${AI_API_KEY}
-    model: Qwen3.5-35B-A3B
+    model: deepseek-chat
     temperature: 0.2
     max_tokens: 4096
     timeout_seconds: 300

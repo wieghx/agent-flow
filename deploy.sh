@@ -59,11 +59,13 @@ if [ "$LOCAL" = true ]; then
     WEB_IMAGE="kind-local:5000/minagflow/agent-flow-web:latest"
     MCP_IMAGE="kind-local:5000/minagflow/mcp-sidecar:latest"
     WORKER_IMAGE="kind-local:5000/minagflow/worker-agent:latest"
+    PROXY_IMAGE="kind-local:5000/minagflow/proxy-sidecar:latest"
 else
     PLANNER_IMAGE="${PLANNER_IMAGE:-minagflow/agent-flow-planner:latest}"
     WEB_IMAGE="${WEB_IMAGE:-minagflow/agent-flow-web:latest}"
     MCP_IMAGE="${MCP_IMAGE:-minagflow/mcp-sidecar:latest}"
     WORKER_IMAGE="${WORKER_IMAGE:-minagflow/worker-agent:latest}"
+    PROXY_IMAGE="${PROXY_IMAGE:-minagflow/proxy-sidecar:latest}"
 fi
 
 # ---- Step 1: 构建镜像 ----
@@ -88,6 +90,16 @@ if [ "$NO_BUILD" = false ]; then
     echo "  构建 Web 镜像: $WEB_IMAGE"
     docker build -t "$WEB_IMAGE" -f Dockerfile.web .
 
+    # 构建 proxy sidecar 镜像（复用 v2rayN 自带 sing-box）
+    echo "  构建 proxy sidecar 镜像: $PROXY_IMAGE"
+    SING_BOX_SRC="${SING_BOX_SRC:-$HOME/.local/share/v2rayN/bin/sing_box/sing-box}"
+    if [ ! -x "$SING_BOX_SRC" ]; then
+        echo "错误: 未找到 sing-box 二进制: $SING_BOX_SRC" >&2
+        exit 1
+    fi
+    cp "$SING_BOX_SRC" bin/sing-box
+    docker build -t "$PROXY_IMAGE" -f Dockerfile.proxy-sidecar .
+
     # 推送到本地 kind 集群（如果可用）
     if docker info 2>/dev/null | grep -q "kind-local:5000"; then
         echo "  推送到 kind-local:5000..."
@@ -95,12 +107,13 @@ if [ "$NO_BUILD" = false ]; then
         docker push "$MCP_IMAGE" 2>/dev/null || true
         docker push "$WORKER_IMAGE" 2>/dev/null || true
         docker push "$WEB_IMAGE" 2>/dev/null || true
+        docker push "$PROXY_IMAGE" 2>/dev/null || true
     fi
     # 加载镜像到 kind 集群（避免节点无法拉取外网镜像）
     if kind get clusters 2>/dev/null | grep -q .; then
         KIND_CLUSTER=$(kind get clusters 2>/dev/null | head -1)
         echo "  加载镜像到 kind 集群 ($KIND_CLUSTER)..."
-        for img in "$PLANNER_IMAGE" "$MCP_IMAGE" "$WORKER_IMAGE" "$WEB_IMAGE" \
+        for img in "$PLANNER_IMAGE" "$MCP_IMAGE" "$WORKER_IMAGE" "$WEB_IMAGE" "$PROXY_IMAGE" \
             registry.k8s.io/agent-sandbox/agent-sandbox-controller:v0.5.0 \
             redis:7-alpine; do
             kind load docker-image "$img" --name "$KIND_CLUSTER" 2>/dev/null || true
@@ -135,6 +148,7 @@ make install
 echo ""
 echo "[4/6] 更新镜像配置..."
 sed -i "s|image: .*minagflow/agent-flow-planner:.*|image: $PLANNER_IMAGE|g" config/manager/deployment.yaml
+sed -i "s|image: .*minagflow/proxy-sidecar:.*|image: $PROXY_IMAGE|g" config/manager/deployment.yaml
 sed -i "s|image: .*minagflow/agent-flow-web:.*|image: $WEB_IMAGE|g" config/web/deployment.yaml
 
 # ---- Step 5: 部署 ----
@@ -145,18 +159,25 @@ kubectl create configmap ai-config \
   --namespace "$NAMESPACE" \
   --from-file=ai_config.yaml=config/ai_config.yaml \
   --dry-run=client -o yaml | kubectl apply -f -
+echo "  同步 proxy sidecar 配置（从 v2rayN 提取节点）..."
+chmod +x "$(dirname "$0")/scripts/build-proxy-sidecar-config.sh"
+"$(dirname "$0")/scripts/build-proxy-sidecar-config.sh"
+kubectl create secret generic proxy-sidecar-config \
+  --namespace "$NAMESPACE" \
+  --from-file=config.json=config/proxy-sidecar.local.json \
+  --dry-run=client -o yaml | kubectl apply -f -
+
 # shellcheck source=scripts/read-ai-secrets.sh
 source "$(dirname "$0")/scripts/read-ai-secrets.sh"
-if [ -n "${AI_API_KEY:-}" ] && [ -n "${AI_BASE_URL:-}" ]; then
+SECRET_ARGS=()
+[ -n "${AI_API_KEY:-}" ] && SECRET_ARGS+=(--from-literal=AI_API_KEY="$AI_API_KEY")
+[ -n "${AI_BASE_URL:-}" ] && SECRET_ARGS+=(--from-literal=AI_BASE_URL="$AI_BASE_URL")
+[ -n "${WORKER_AI_API_KEY:-}" ] && SECRET_ARGS+=(--from-literal=WORKER_AI_API_KEY="$WORKER_AI_API_KEY")
+[ -n "${WORKER_AI_BASE_URL:-}" ] && SECRET_ARGS+=(--from-literal=WORKER_AI_BASE_URL="$WORKER_AI_BASE_URL")
+if [ "${#SECRET_ARGS[@]}" -gt 0 ]; then
   kubectl create secret generic ai-secrets \
     --namespace "$NAMESPACE" \
-    --from-literal=AI_API_KEY="$AI_API_KEY" \
-    --from-literal=AI_BASE_URL="$AI_BASE_URL" \
-    --dry-run=client -o yaml | kubectl apply -f -
-elif [ -n "${AI_API_KEY:-}" ]; then
-  kubectl create secret generic ai-secrets \
-    --namespace "$NAMESPACE" \
-    --from-literal=AI_API_KEY="$AI_API_KEY" \
+    "${SECRET_ARGS[@]}" \
     --dry-run=client -o yaml | kubectl apply -f -
 fi
 make deploy

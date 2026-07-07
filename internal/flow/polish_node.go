@@ -39,12 +39,13 @@ func (n *PolishNode) Run(ctx context.Context, input State) (State, error) {
 只输出润色后的中文小说正文，不要标题重复堆砌，不要写作说明。`
 
 	userMessage := fmt.Sprintf("【写作约束】\n%s\n\n【初稿】\n%s", input.WorkerInstruction, draft)
-	out, err := input.AIService.WorkerChat(ctx, systemPrompt, userMessage)
+	result, err := input.AIService.WorkerChat(ctx, systemPrompt, userMessage)
 	if err != nil {
 		return input, fmt.Errorf("润色 AI 调用失败：%w", err)
 	}
+	input.TokenUsage.Add(result.Usage)
 
-	polished := ExtractChineseProse(strings.TrimSpace(out))
+	polished := ExtractChineseProse(strings.TrimSpace(result.Content))
 	if len([]rune(polished)) < len([]rune(draft))/3 {
 		logger.Info("polish output too short, keeping draft", "draft", len(draft), "polished", len(polished))
 		return input, nil

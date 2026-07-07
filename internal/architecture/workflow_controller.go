@@ -8,6 +8,7 @@ import (
 	"time"
 
 	agentflowiov1alpha1 "agent-flow/api/v1alpha1"
+	"agent-flow/internal/ai"
 	"agent-flow/internal/flow"
 	"agent-flow/internal/store"
 	wfengine "agent-flow/internal/workflow"
@@ -291,6 +292,9 @@ func (c *WorkflowController) syncRunningTasks(ctx context.Context, wf *agentflow
 					summaryPath = fmt.Sprintf("chapters/%s", wfengine.ChapterSummaryFileName(num, width))
 					_ = wfengine.WriteArtifact(wf, summaryPath, wfengine.SummarizeChapter(output, 300))
 				}
+			}
+			if task.Status.TokenUsage != nil {
+				_ = store.RecordTaskTokensFromStore(ctx, c.Store, wf, stepID, ai.FromTaskTokenUsage(task.Status.TokenUsage))
 			}
 			c.markChapterDone(ctx, wf, stepID, relPath, summaryPath, output, task.Status.QualityCheck)
 			wf.Status.CompletedSteps = append(wf.Status.CompletedSteps, stepID)

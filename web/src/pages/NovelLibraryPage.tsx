@@ -15,6 +15,7 @@ import { PhaseBadge } from '@/components/PhaseBadge';
 import { PipelineStageBar } from '@/components/PipelineStageBar';
 import { Modal } from '@/components/Modal';
 import { OutlineEditorModal } from '@/components/OutlineEditorModal';
+import { formatTokenCount } from '@/lib/tokens';
 import type { NovelSummary, RAGChunk } from '@/types/api';
 
 const EMPTY_FORM = {
@@ -236,6 +237,11 @@ export function NovelLibraryPage() {
                 <span>
                   章节 {n.chapters_done}/{n.chapter_count || '?'}
                 </span>
+                {n.total_tokens ? (
+                  <span title={`输入 ${formatTokenCount(n.prompt_tokens)} / 输出 ${formatTokenCount(n.completion_tokens)}`}>
+                    Token {formatTokenCount(n.total_tokens)}
+                  </span>
+                ) : null}
                 {n.chapters_writing > 0 && <span className="text-amber-400">撰写中 {n.chapters_writing}</span>}
                 {n.chapters_failed > 0 && <span className="text-red-400">失败 {n.chapters_failed}</span>}
               </div>

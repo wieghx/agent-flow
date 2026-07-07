@@ -52,7 +52,7 @@ func NewRemoteClient(remoteConfig *config.RemoteConfig) *RemoteClient {
 }
 
 // Chat 发送聊天请求
-func (c *RemoteClient) Chat(ctx context.Context, systemPrompt, userMessage string) (string, error) {
+func (c *RemoteClient) Chat(ctx context.Context, systemPrompt, userMessage string) (ChatResult, error) {
 	url := c.baseURL + "/v1/chat/completions"
 
 	var jsonData []byte
@@ -62,19 +62,19 @@ func (c *RemoteClient) Chat(ctx context.Context, systemPrompt, userMessage strin
 	if c.requestCfg.BodyTemplate != "" {
 		jsonData, err = c.generateRequestFromTemplate(systemPrompt, userMessage)
 		if err != nil {
-			return "", fmt.Errorf("生成请求失败：%w", err)
+			return ChatResult{}, fmt.Errorf("生成请求失败：%w", err)
 		}
 	} else {
 		// 使用默认格式
 		jsonData, err = c.generateDefaultRequest(systemPrompt, userMessage)
 		if err != nil {
-			return "", fmt.Errorf("生成请求失败：%w", err)
+			return ChatResult{}, fmt.Errorf("生成请求失败：%w", err)
 		}
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return "", fmt.Errorf("创建请求失败：%w", err)
+		return ChatResult{}, fmt.Errorf("创建请求失败：%w", err)
 	}
 
 	// 添加请求头
@@ -89,20 +89,21 @@ func (c *RemoteClient) Chat(ctx context.Context, systemPrompt, userMessage strin
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("发送请求失败：%w", err)
+		return ChatResult{}, fmt.Errorf("发送请求失败：%w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("API 返回错误状态：%d, 响应：%s", resp.StatusCode, string(body))
+		return ChatResult{}, fmt.Errorf("API 返回错误状态：%d, 响应：%s", resp.StatusCode, string(body))
 	}
 
 	// 解析响应
 	var response map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return "", fmt.Errorf("解析响应失败：%w", err)
+		return ChatResult{}, fmt.Errorf("解析响应失败：%w", err)
 	}
+	usage := ParseUsageFromResponse(response)
 
 	// 首先尝试标准 content 字段（API 返回的实际响应内容）
 	content := c.extractField(response, c.responseCfg.ExtractField)
@@ -122,10 +123,10 @@ func (c *RemoteClient) Chat(ctx context.Context, systemPrompt, userMessage strin
 	}
 
 	if content == "" {
-		return "", fmt.Errorf("响应中没有有效的内容")
+		return ChatResult{}, fmt.Errorf("响应中没有有效的内容")
 	}
 
-	return content, nil
+	return ChatResult{Content: content, Usage: usage}, nil
 }
 
 // extractContentFromReasoning 从 reasoning 字段提取实际内容

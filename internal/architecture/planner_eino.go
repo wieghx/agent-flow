@@ -263,6 +263,7 @@ func (p *TaskPlannerEino) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			task.Status.Output.Content = workerState.WorkerOutput
 			task.Status.Output.Format = "text"
 			task.Status.Output.GeneratedAt = &now
+			task.Status.TokenUsage = ai.ToTaskTokenUsage(workerState.TokenUsage)
 			task.Status.Phase = agentflowiov1alpha1.TaskPhaseSucceeded
 			task.Status.Message = "任务执行成功（已跳过质量检查）"
 			if task.Status.CompletionTime == nil {
@@ -330,6 +331,7 @@ func (p *TaskPlannerEino) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 func (p *TaskPlannerEino) runWorkerMonitorLoop(ctx context.Context, task *agentflowiov1alpha1.Task, instruction string, qualityThreshold, startRetry, maxRetries int, policy retryutil.Policy, initialFeedback string) (string, error) {
 	logger := log.FromContext(ctx)
 	feedback := initialFeedback
+	var totalUsage ai.TokenUsage
 
 	if startRetry > maxRetries {
 		logger.Info("checkpoint retry exceeds budget, resetting", "task", task.Name, "startRetry", startRetry, "maxRetries", maxRetries)
@@ -395,11 +397,13 @@ func (p *TaskPlannerEino) runWorkerMonitorLoop(ctx context.Context, task *agentf
 			return "", fmt.Errorf("eino 流程执行失败：%w", err)
 		}
 
+		totalUsage.Add(output.TokenUsage)
 		logger.Info("Worker-Monitor 流程完成",
 			"retry", attempt,
 			"workerOutput长度", len(output.WorkerOutput),
 			"monitorFeedback", output.MonitorFeedback,
 			"executionResult", output.ExecutionResult,
+			"tokenUsage", output.TokenUsage.TotalTokens,
 		)
 
 		p.publishTaskEvent(ctx, task, cache.EventStepMonitor, output.ExecutionResult, attempt, int(p.evalScore(output)))
@@ -421,6 +425,7 @@ func (p *TaskPlannerEino) runWorkerMonitorLoop(ctx context.Context, task *agentf
 		task.Status.Output.Content = output.WorkerOutput
 		task.Status.Output.Format = "text"
 		task.Status.Output.GeneratedAt = &now
+		task.Status.TokenUsage = ai.ToTaskTokenUsage(totalUsage)
 
 		// 更新重试次数
 		task.Status.Retries = int32(attempt)

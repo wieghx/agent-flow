@@ -1,0 +1,27 @@
+{
+  "log": { "level": "warn", "timestamp": true },
+  "inbounds": [
+    {
+      "type": "mixed",
+      "tag": "mixed-in",
+      "listen": "127.0.0.1",
+      "listen_port": 10810
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "YOUR_PROXY_TYPE",
+      "tag": "proxy",
+      "server": "your-proxy-server",
+      "server_port": 443
+    },
+    { "type": "direct", "tag": "direct" }
+  ],
+  "route": {
+    "rules": [
+      { "domain_suffix": ["deepseek.com"], "outbound": "direct" },
+      { "ip_is_private": true, "outbound": "direct" }
+    ],
+    "final": "proxy"
+  }
+}

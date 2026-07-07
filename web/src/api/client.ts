@@ -2,6 +2,7 @@ import type {
   ApiResponse,
   ChatResponseData,
   ConversationData,
+  ChapterSummary,
   CreateNovelPayload,
   ImportNovelPayload,
   NovelOutline,
@@ -12,6 +13,7 @@ import type {
   PendingTask,
   PendingWorkflow,
   TaskSummary,
+  TokenReport,
   WorkflowDetail,
   WorkflowSummary,
 } from '@/types/api';
@@ -42,6 +44,17 @@ export async function fetchNovels(): Promise<NovelSummary[]> {
 
 export async function fetchNovelDetail(namespace: string, name: string): Promise<NovelSummary> {
   return request<NovelSummary>(`/novels/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}`);
+}
+
+export async function fetchTokenReport(): Promise<TokenReport> {
+  return request<TokenReport>('/novels/tokens/report');
+}
+
+export async function fetchNovelChapters(namespace: string, name: string): Promise<ChapterSummary[]> {
+  const data = await request<{ chapters: ChapterSummary[] }>(
+    `/novels/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}/chapters`,
+  );
+  return data.chapters || [];
 }
 
 export async function fetchNovelOutline(namespace: string, name: string): Promise<NovelOutline> {

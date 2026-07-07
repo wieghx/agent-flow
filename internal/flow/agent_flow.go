@@ -59,6 +59,8 @@ type State struct {
 	MonitorTier string
 	// TeamMode enables polish + multi-gate QC for novel team pipeline.
 	TeamMode bool
+	// TokenUsage accumulates LLM tokens consumed in this flow run.
+	TokenUsage ai.TokenUsage
 }
 
 // AgentFlow 是基于 eino 框架构建的 Agent 编排流程
@@ -368,10 +370,12 @@ func (n *WorkerNode) Run(ctx context.Context, input State) (State, error) {
 	var err error
 	if ShouldUseSegmentedChapter(input.WorkerInstruction, input.MonitorTaskType) {
 		logger.Info("writing chapter in segmented mode")
-		output, err = GenerateSegmentedChapter(ctx, input.AIService, input.WorkerInstruction, input.MonitorFeedback)
+		var segUsage ai.TokenUsage
+		output, segUsage, err = GenerateSegmentedChapter(ctx, input.AIService, input.WorkerInstruction, input.MonitorFeedback)
 		if err != nil {
 			return input, fmt.Errorf("Worker 分段撰写失败：%w", err)
 		}
+		input.TokenUsage.Add(segUsage)
 	} else {
 		systemPrompt := buildWorkerSystemPromptFor(input.WorkerInstruction, input.MonitorTaskType)
 		userMessage := input.WorkerInstruction
@@ -380,10 +384,12 @@ func (n *WorkerNode) Run(ctx context.Context, input State) (State, error) {
 			userMessage = fmt.Sprintf("%s\n\n上次执行的反馈（请根据反馈改进）：%s", input.WorkerInstruction, input.MonitorFeedback)
 		}
 
-		output, err = input.AIService.WorkerChat(ctx, systemPrompt, userMessage)
+		result, err := input.AIService.WorkerChat(ctx, systemPrompt, userMessage)
 		if err != nil {
 			return input, fmt.Errorf("Worker AI 调用失败：%w", err)
 		}
+		input.TokenUsage.Add(result.Usage)
+		output = result.Content
 
 		output = NormalizeWorkerOutput(userMessage, output)
 		if strings.Contains(userMessage, "小说作者") || strings.Contains(userMessage, "章节正文") {
@@ -440,6 +446,7 @@ func (n *MonitorNode) Run(ctx context.Context, input State) (State, error) {
 		return input, fmt.Errorf("Monitor 评估失败：%w", err)
 	}
 
+	input.TokenUsage.Add(eval.TokenUsage)
 	input.MonitorEval = eval
 	if !eval.Passed {
 		input.MonitorFeedback = FormatRetryFeedback(eval, input.QualityThreshold)

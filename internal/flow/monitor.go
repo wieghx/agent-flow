@@ -48,6 +48,7 @@ type EvalResult struct {
 	Score       int             `json:"score"`
 	Passed      bool            `json:"passed"`
 	Feedback    string          `json:"feedback"`
+	TokenUsage  ai.TokenUsage   `json:"-"`
 	Issues      []string        `json:"issues,omitempty"`
 	Dimensions  *EvalDimensions `json:"dimensions,omitempty"`
 	TaskType    string          `json:"taskType"`
@@ -509,22 +510,24 @@ func EvaluateWithAI(ctx context.Context, aiSvc *ai.Service, systemPrompt, instru
 		userMessage += fmt.Sprintf("\n\n规则预检提示（请纳入评估）: %s", strings.Join(ruleHint.Issues, "; "))
 	}
 
-	response, err := aiSvc.MonitorChat(ctx, systemPrompt, userMessage)
+	result, err := aiSvc.MonitorChat(ctx, systemPrompt, userMessage)
 	if err != nil {
 		return nil, err
 	}
 
-	eval, err := ParseMonitorResult(response, threshold)
+	eval, err := ParseMonitorResult(result.Content, threshold)
 	if err != nil {
 		return &EvalResult{
 			Score:       30,
 			Passed:      false,
-			Feedback:    fmt.Sprintf("评估解析失败: %v。原始响应: %s", err, truncateForFeedback(response)),
+			Feedback:    fmt.Sprintf("评估解析失败: %v。原始响应: %s", err, truncateForFeedback(result.Content)),
 			CheckMethod: CheckMethodAI,
 			Attempt:     attempt,
+			TokenUsage:  result.Usage,
 		}, nil
 	}
 
+	eval.TokenUsage = result.Usage
 	eval.CheckMethod = CheckMethodAI
 	if ruleHint != nil {
 		eval.CheckMethod = CheckMethodHybrid
@@ -696,10 +699,15 @@ func RunMonitorEvaluation(ctx context.Context, aiSvc *ai.Service, instruction, o
 		userInstruction += "\n\n上次评估反馈（请在改进中体现）: " + previousFeedback
 	}
 
+	var monitorUsage ai.TokenUsage
 	if teamMode && taskType == TaskTypeNovelChapterTeam && ruleResult.Score > 0 && len(ruleResult.Issues) > 0 {
-		if canon, err := evaluateCanonGate(ctx, aiSvc, userInstruction, normalizedOutput, threshold, attempt); err == nil && canon != nil && !canon.Passed {
-			canon.TaskType = taskType
-			return canon, nil
+		if canon, err := evaluateCanonGate(ctx, aiSvc, userInstruction, normalizedOutput, threshold, attempt); err == nil && canon != nil {
+			monitorUsage.Add(canon.TokenUsage)
+			if !canon.Passed {
+				canon.TaskType = taskType
+				canon.TokenUsage = monitorUsage
+				return canon, nil
+			}
 		}
 	}
 
@@ -711,6 +719,8 @@ func RunMonitorEvaluation(ctx context.Context, aiSvc *ai.Service, instruction, o
 	if err != nil {
 		return nil, err
 	}
+	monitorUsage.Add(aiResult.TokenUsage)
+	aiResult.TokenUsage = monitorUsage
 
 	if aiResult.TaskType == "" {
 		aiResult.TaskType = taskType

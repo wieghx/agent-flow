@@ -101,7 +101,11 @@ func (p *TaskPlannerEino) runMCPLocalAgent(ctx context.Context, instruction stri
 	}
 	agent := mcp.NewLocalAgent(mcp.LocalAgentConfig{
 		Chat: func(ctx context.Context, systemPrompt, userMessage string) (string, error) {
-			return p.AIService.WorkerChat(ctx, systemPrompt, userMessage)
+			result, err := p.AIService.WorkerChat(ctx, systemPrompt, userMessage)
+			if err != nil {
+				return "", err
+			}
+			return result.Content, nil
 		},
 		Executor: mcp.NewToolExecutor(mcp.DefaultTools()),
 		MaxSteps: 15,

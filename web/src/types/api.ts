@@ -60,6 +60,46 @@ export interface NovelSummary {
   created_at?: string;
   updated_at?: string;
   completion_at?: string;
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+}
+
+export interface ChapterSummary {
+  num: number;
+  title: string;
+  summary?: string;
+  status: string;
+  word_count: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
+export interface TokenReportNovel {
+  namespace: string;
+  name: string;
+  title: string;
+  chapter_count: number;
+  chapters_done: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  avg_chapter_tokens: number;
+  chapters: ChapterSummary[];
+}
+
+export interface TokenReport {
+  novel_count: number;
+  chapter_count: number;
+  chapters_done: number;
+  chapters_with_tokens: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  avg_novel_tokens: number;
+  avg_chapter_tokens: number;
+  novels: TokenReportNovel[];
 }
 
 export interface ChapterOutline {

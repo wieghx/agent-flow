@@ -6,6 +6,7 @@ import { WorkflowsPage } from '@/pages/WorkflowsPage';
 import { MonitorPage } from '@/pages/MonitorPage';
 import { NovelReaderPage } from '@/pages/NovelReaderPage';
 import { NovelLibraryPage } from '@/pages/NovelLibraryPage';
+import { TokenReportPage } from '@/pages/TokenReportPage';
 
 export function App() {
   return (
@@ -16,6 +17,7 @@ export function App() {
           <Route path="/tasks" element={<TasksPage />} />
           <Route path="/workflows" element={<WorkflowsPage />} />
           <Route path="/library" element={<NovelLibraryPage />} />
+          <Route path="/tokens" element={<TokenReportPage />} />
           <Route path="/monitor" element={<MonitorPage />} />
           <Route path="/novel" element={<NovelReaderPage />} />
           <Route path="/novel/:namespace/:name" element={<NovelReaderPage />} />

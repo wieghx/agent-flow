@@ -59,16 +59,15 @@ kubectl create configmap ai-config \
 echo "==> [4/6] 同步 AI Secret（可选）"
 # shellcheck source=scripts/read-ai-secrets.sh
 source "$(dirname "$0")/read-ai-secrets.sh"
-if [ -n "${AI_API_KEY:-}" ] && [ -n "${AI_BASE_URL:-}" ]; then
+SECRET_ARGS=()
+[ -n "${AI_API_KEY:-}" ] && SECRET_ARGS+=(--from-literal=AI_API_KEY="$AI_API_KEY")
+[ -n "${AI_BASE_URL:-}" ] && SECRET_ARGS+=(--from-literal=AI_BASE_URL="$AI_BASE_URL")
+[ -n "${WORKER_AI_API_KEY:-}" ] && SECRET_ARGS+=(--from-literal=WORKER_AI_API_KEY="$WORKER_AI_API_KEY")
+[ -n "${WORKER_AI_BASE_URL:-}" ] && SECRET_ARGS+=(--from-literal=WORKER_AI_BASE_URL="$WORKER_AI_BASE_URL")
+if [ "${#SECRET_ARGS[@]}" -gt 0 ]; then
   kubectl create secret generic ai-secrets \
     --namespace "$NAMESPACE" \
-    --from-literal=AI_API_KEY="$AI_API_KEY" \
-    --from-literal=AI_BASE_URL="$AI_BASE_URL" \
-    --dry-run=client -o yaml | kubectl apply -f -
-elif [ -n "${AI_API_KEY:-}" ]; then
-  kubectl create secret generic ai-secrets \
-    --namespace "$NAMESPACE" \
-    --from-literal=AI_API_KEY="$AI_API_KEY" \
+    "${SECRET_ARGS[@]}" \
     --dry-run=client -o yaml | kubectl apply -f -
 else
   echo "    未设置 AI_API_KEY（env 或 config/ai_config.local.yaml），跳过 Secret"
