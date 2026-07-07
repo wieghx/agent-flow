@@ -51,6 +51,15 @@
 
 列出所有 Task CRD 及状态摘要。
 
+查询参数：
+
+| 参数 | 说明 |
+|------|------|
+| `namespace` | 限定命名空间 |
+| `workflow` | 按 `agentflow.io/workflow` 标签过滤，用于 Workflow 详情页 |
+
+响应字段含 `workflow`、`step_id`（来自 Task 标签）。
+
 ### GET /tasks/pending
 
 获取待批准任务（来自对话流程）。

@@ -296,6 +296,8 @@ func (a *API) handleConversation(w http.ResponseWriter, r *http.Request) {
 type TaskListResponse struct {
 	Name         string                            `json:"name"`
 	Namespace    string                            `json:"namespace"`
+	Workflow     string                            `json:"workflow,omitempty"`
+	StepID       string                            `json:"step_id,omitempty"`
 	Phase        string                            `json:"phase"`
 	Message      string                            `json:"message"`
 	Output       string                            `json:"output"`
@@ -326,8 +328,19 @@ func (a *API) handleTasks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	filterWorkflow := strings.TrimSpace(r.URL.Query().Get("workflow"))
+	filterNamespace := strings.TrimSpace(r.URL.Query().Get("namespace"))
+
+	listOpts := []client.ListOption{}
+	if filterWorkflow != "" {
+		listOpts = append(listOpts, client.MatchingLabels{"agentflow.io/workflow": filterWorkflow})
+	}
+	if filterNamespace != "" {
+		listOpts = append(listOpts, client.InNamespace(filterNamespace))
+	}
+
 	taskList := &agentflowiov1alpha1.TaskList{}
-	if err := a.client.List(r.Context(), taskList); err != nil {
+	if err := a.client.List(r.Context(), taskList, listOpts...); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(Response{
 			Success: false,
@@ -355,9 +368,17 @@ func (a *API) handleTasks(w http.ResponseWriter, r *http.Request) {
 		if task.Status.CompletionTime != nil {
 			completionAt = task.Status.CompletionTime.Time.Format("2006-01-02 15:04:05")
 		}
+		workflowName := ""
+		stepID := ""
+		if task.Labels != nil {
+			workflowName = task.Labels["agentflow.io/workflow"]
+			stepID = task.Labels["agentflow.io/workflow-step"]
+		}
 		tasks = append(tasks, TaskListResponse{
 			Name:         task.Name,
 			Namespace:    task.Namespace,
+			Workflow:     workflowName,
+			StepID:       stepID,
 			Phase:        string(task.Status.Phase),
 			Message:      task.Status.Message,
 			Output:       output,
@@ -695,15 +716,24 @@ func (a *API) handleWorkflows(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) handleWorkflowDetail(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/workflows/")
-	name := strings.Split(path, "/")[0]
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	var namespace, name string
+	switch len(parts) {
+	case 1:
+		name = parts[0]
+		namespace = r.URL.Query().Get("namespace")
+		if namespace == "" {
+			namespace = "default"
+		}
+	case 2:
+		namespace, name = parts[0], parts[1]
+	default:
+		http.Error(w, "Workflow path must be /workflows/{name} or /workflows/{namespace}/{name}", http.StatusBadRequest)
+		return
+	}
 	if name == "" || name == "pending" || name == "approve" || name == "reject" || name == "create" {
 		http.Error(w, "Workflow name required", http.StatusBadRequest)
 		return
-	}
-
-	namespace := r.URL.Query().Get("namespace")
-	if namespace == "" {
-		namespace = "default"
 	}
 
 	wf := &agentflowiov1alpha1.Workflow{}

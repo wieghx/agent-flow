@@ -23,6 +23,8 @@ export interface QualityCheck {
 export interface TaskSummary {
   name: string;
   namespace: string;
+  workflow?: string;
+  step_id?: string;
   phase: string;
   message?: string;
   output?: string;
@@ -189,6 +191,15 @@ export interface WorkflowProgress {
   percent?: number;
 }
 
+export interface WorkflowStepStatus {
+  id: string;
+  phase?: string;
+  retries?: number;
+  taskName?: string;
+  message?: string;
+  score?: number;
+}
+
 export interface WorkflowStatus {
   phase?: string;
   message?: string;
@@ -196,12 +207,13 @@ export interface WorkflowStatus {
   workspacePath?: string;
   completedSteps?: string[];
   failedSteps?: string[];
+  stepStatuses?: WorkflowStepStatus[];
   progress?: WorkflowProgress;
 }
 
 export interface WorkflowDetail {
   metadata?: { name?: string; namespace?: string };
-  spec?: { template?: string; params?: Record<string, string> };
+  spec?: { template?: string; params?: Record<string, string>; prompt?: string };
   status?: WorkflowStatus;
 }
 

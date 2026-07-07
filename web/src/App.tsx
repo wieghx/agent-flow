@@ -3,6 +3,7 @@ import { Layout } from '@/components/Layout';
 import { ChatPage } from '@/pages/ChatPage';
 import { TasksPage } from '@/pages/TasksPage';
 import { WorkflowsPage } from '@/pages/WorkflowsPage';
+import { WorkflowDetailPage } from '@/pages/WorkflowDetailPage';
 import { MonitorPage } from '@/pages/MonitorPage';
 import { NovelReaderPage } from '@/pages/NovelReaderPage';
 import { NovelLibraryPage } from '@/pages/NovelLibraryPage';
@@ -16,6 +17,7 @@ export function App() {
           <Route path="/" element={<ChatPage />} />
           <Route path="/tasks" element={<TasksPage />} />
           <Route path="/workflows" element={<WorkflowsPage />} />
+          <Route path="/workflows/:namespace/:name" element={<WorkflowDetailPage />} />
           <Route path="/library" element={<NovelLibraryPage />} />
           <Route path="/tokens" element={<TokenReportPage />} />
           <Route path="/monitor" element={<MonitorPage />} />

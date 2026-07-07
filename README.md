@@ -42,7 +42,7 @@
 - **三阶段扩写** — 默认 `threeStage=true`：梗概 → 剧情脚本 → 正文，降低长篇跑题
 - **导入拆书** — `POST /novels/import`：导入全文 → AI 拆书 → RAG 索引 → 可选续写
 - **RAG 剧情库** — 关键词检索工作区梗概/剧情/正文，写作时自动注入参考片段
-- **Web UI** — Vite + React，小说库导入、三阶段进度、RAG 检索、SSE 进度、章节浏览
+- **Web UI** — Vite + React，小说库导入、Workflow 详情页、三阶段进度、RAG 检索、SSE 进度、章节浏览
 - **Token 统计** — 按小说/章节累计 LLM 用量，Web `/tokens` 报表页支持排序与 CSV 导出
 - **CI** — GitHub Actions：`go test` + 多二进制构建
 

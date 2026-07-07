@@ -56,6 +56,12 @@ export function WorkflowsPage() {
               </span>
               <div className="flex gap-2">
                 <Link
+                  to={`/workflows/${wf.namespace || 'default'}/${wf.name}`}
+                  className="px-3 py-1.5 border border-dark-border rounded-lg hover:bg-dark-bg"
+                >
+                  详情
+                </Link>
+                <Link
                   to={`/novel/${wf.namespace || 'default'}/${wf.name}`}
                   className="px-3 py-1.5 bg-emerald-700/80 rounded text-white"
                 >

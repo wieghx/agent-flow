@@ -130,7 +130,15 @@ export async function deleteNovel(namespace: string, name: string): Promise<void
 }
 
 export async function fetchWorkflowDetail(name: string, namespace = 'default'): Promise<WorkflowDetail> {
-  return request<WorkflowDetail>(`/workflows/${encodeURIComponent(name)}?namespace=${encodeURIComponent(namespace)}`);
+  return request<WorkflowDetail>(
+    `/workflows/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}`,
+  );
+}
+
+export async function fetchWorkflowTasks(namespace: string, workflow: string): Promise<TaskSummary[]> {
+  const q = new URLSearchParams({ namespace, workflow });
+  const data = await request<{ tasks: TaskSummary[] }>(`/tasks?${q.toString()}`);
+  return data.tasks || [];
 }
 
 export async function fetchPendingTasks(): Promise<PendingTask[]> {

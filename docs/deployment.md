@@ -141,7 +141,9 @@ go vet ./...
 cd web && npm run build
 ```
 
-E2E 脚本 `scripts/e2e-novel-local.sh` 需 K8s 集群与可用 AI，暂未纳入 CI。
+CI 自动运行 `go test ./internal/e2e/...`（Mock LLM，无需 K8s / 真实 API Key）。
+
+本地全量 E2E：`scripts/e2e-novel-local.sh`（需 K8s 集群与可用 AI）。
 
 ## 验证部署
 
