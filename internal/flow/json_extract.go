@@ -18,6 +18,7 @@ func ExtractJSONObject(text string, requiredKeys ...string) string {
 			continue
 		}
 		depth := 0
+	jLoop:
 		for j := i; j < len(text); j++ {
 			switch text[j] {
 			case '{':
@@ -26,14 +27,13 @@ func ExtractJSONObject(text string, requiredKeys ...string) string {
 				depth--
 				if depth == 0 {
 					candidate := strings.TrimSpace(text[i : j+1])
-					if !jsonObjectMatchesKeys(candidate, requiredKeys) {
-						break
+					if jsonObjectMatchesKeys(candidate, requiredKeys) {
+						var raw json.RawMessage
+						if json.Unmarshal([]byte(candidate), &raw) == nil && len(candidate) > len(best) {
+							best = candidate
+						}
 					}
-					var raw json.RawMessage
-					if json.Unmarshal([]byte(candidate), &raw) == nil && len(candidate) > len(best) {
-						best = candidate
-					}
-					break
+					break jLoop
 				}
 			}
 		}
@@ -56,7 +56,7 @@ func jsonObjectMatchesKeys(candidate string, requiredKeys []string) bool {
 // NormalizeWorkerOutput strips reasoning noise for outline JSON tasks.
 func NormalizeWorkerOutput(instruction, output string) string {
 	lower := strings.ToLower(instruction)
-	if !(strings.Contains(instruction, "大纲") || strings.Contains(lower, "outline") || strings.Contains(instruction, `"chapters"`)) {
+	if !strings.Contains(instruction, "大纲") && !strings.Contains(lower, "outline") && !strings.Contains(instruction, `"chapters"`) {
 		return output
 	}
 	if extracted := ExtractJSONObject(output, "title", "chapters"); extracted != "" {

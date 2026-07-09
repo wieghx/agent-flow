@@ -413,10 +413,6 @@ func TestMergeChapterFiles(t *testing.T) {
 	}
 }
 
-func containsString(s, substr string) bool {
-	return len(s) > 0 && len(substr) > 0 && containsAll(s, substr)
-}
-
 func containsAll(s string, parts ...string) bool {
 	for _, p := range parts {
 		if !containsSubstring(s, p) {

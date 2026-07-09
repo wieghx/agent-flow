@@ -56,7 +56,7 @@ func (a *Agent) FetchToolCatalog(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 1024*1024))
 	if err != nil {
@@ -178,7 +178,7 @@ func (a *Agent) chat(ctx context.Context, messages []ChatMessage) (string, error
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))
 	var result ChatResponse
@@ -205,7 +205,7 @@ func (a *Agent) callTool(ctx context.Context, name string, input map[string]inte
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))
 	var result ToolCallResponse

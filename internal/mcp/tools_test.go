@@ -33,7 +33,7 @@ func TestFileWriteReadAppendCopy(t *testing.T) {
 	// Use /tmp explicitly — os.TempDir() is /var/folders/... on macOS and fails path allowlist.
 	dir := "/tmp/mcp-tools-test"
 	_ = os.MkdirAll(dir, 0755)
-	defer os.RemoveAll(dir)
+	defer func() { _ = os.RemoveAll(dir) }()
 
 	base := filepath.Join(dir, "a.txt")
 	dst := filepath.Join(dir, "b.txt")

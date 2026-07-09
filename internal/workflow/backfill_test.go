@@ -76,10 +76,10 @@ func TestClearStepDispatchState(t *testing.T) {
 		Status: agentflowiov1alpha1.WorkflowStatus{
 			StepStatuses: []agentflowiov1alpha1.WorkflowStepStatus{
 				{
-					ID:      "chapter-016",
-					Phase:   agentflowiov1alpha1.TaskPhaseFailed,
+					ID:       "chapter-016",
+					Phase:    agentflowiov1alpha1.TaskPhaseFailed,
 					TaskName: "wf-demo-chapter-016",
-					Message: "too short",
+					Message:  "too short",
 				},
 			},
 		},

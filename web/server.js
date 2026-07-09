@@ -42,12 +42,14 @@ function serveStatic(filePath, res) {
 }
 
 function proxyRequest(req, res) {
+  const apiUrl = new URL(API_URL);
   const options = {
-    hostname: new URL(API_URL).hostname,
-    port: new URL(API_URL).port,
+    hostname: apiUrl.hostname,
+    port: apiUrl.port,
     path: req.url,
     method: req.method,
     headers: req.headers,
+    timeout: 120000, // 2 min overall
   };
 
   const proxyReq = http.request(options, (proxyRes) => {
@@ -60,9 +62,15 @@ function proxyRequest(req, res) {
     proxyRes.pipe(res);
   });
 
+  proxyReq.setTimeout(120000, () => {
+    proxyReq.destroy(new Error('proxy timeout'));
+  });
+
   proxyReq.on('error', (e) => {
-    res.writeHead(500, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Proxy error: ' + e.message }));
+    if (!res.headersSent) {
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Proxy error: ' + e.message }));
+    }
   });
 
   req.pipe(proxyReq);

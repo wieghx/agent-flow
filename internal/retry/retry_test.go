@@ -10,10 +10,10 @@ import (
 func TestClassifyMessage(t *testing.T) {
 	cases := map[string]FailureKind{
 		"chapter prose too short (635 runes)": FailureTooShort,
-		"chapter prose appears truncated":   FailureTruncated,
+		"chapter prose appears truncated":     FailureTruncated,
 		"worker output is empty":              FailureEmpty,
-		"outline JSON invalid":              FailureInvalid,
-		"connection reset by peer":          FailureTransient,
+		"outline JSON invalid":                FailureInvalid,
+		"connection reset by peer":            FailureTransient,
 	}
 	for msg, want := range cases {
 		if got := ClassifyMessage(msg); got != want {

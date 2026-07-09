@@ -41,10 +41,3 @@ func teamChapterForeachInstruction(wordsPerChapter int, params map[string]string
 只输出章节正文（可含章节标题），不要解释写作过程。`
 	return instruction
 }
-
-func chapterForeachDependsOn(team bool, outlineDep string) []string {
-	if team {
-		return []string{outlineDep, "style-bible"}
-	}
-	return []string{outlineDep}
-}

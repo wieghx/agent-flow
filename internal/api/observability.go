@@ -6,7 +6,6 @@ import (
 
 	agentflowiov1alpha1 "agent-flow/api/v1alpha1"
 	"agent-flow/internal/metrics"
-
 )
 
 // ClusterStats is live resource counts from the Kubernetes API.

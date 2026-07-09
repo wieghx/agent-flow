@@ -10,7 +10,7 @@ func TestDetectTaskType(t *testing.T) {
 		"写一首七言绝句":                     TaskTypePoetry,
 		"implement hello world in go": TaskTypeCode,
 		"总结这篇文章":                      TaskTypeGeneral,
-		"为第4卷（第76-100章）生成详细章节大纲":        TaskTypeNovelVolumeOutline,
+		"为第4卷（第76-100章）生成详细章节大纲":      TaskTypeNovelVolumeOutline,
 	}
 	for input, want := range cases {
 		if got := DetectTaskType(input); got != want {

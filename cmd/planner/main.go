@@ -31,7 +31,6 @@ var (
 	appVersion   = "1.0.0"
 	apiPort      = 8082
 	aiConfigPath string
-	aiConfig     *config.AIConfig
 )
 
 func init() {

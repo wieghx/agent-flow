@@ -7,12 +7,12 @@ import (
 )
 
 const (
-	DefaultSegmentWords        = 500
-	MinSegmentWords            = 300
-	DefaultSegmentCount        = 5
-	MinSegmentRunesFloor       = 120
-	SegmentMinRunesPercent     = 24 // 24% of segmentWords; 500-word segments require >= 120 runes
-	SegmentDirectiveBlock      = "【分段写作配置】"
+	DefaultSegmentWords    = 500
+	MinSegmentWords        = 300
+	DefaultSegmentCount    = 5
+	MinSegmentRunesFloor   = 120
+	SegmentMinRunesPercent = 24 // 24% of segmentWords; 500-word segments require >= 120 runes
+	SegmentDirectiveBlock  = "【分段写作配置】"
 )
 
 // MinSegmentRunes returns the minimum prose length required for one chapter segment.
@@ -122,10 +122,10 @@ func BuildSegmentInstruction(baseInstruction string, segmentIndex, totalSegments
 	minSeg := MinSegmentRunes(segmentWords)
 
 	var role string
-	switch {
-	case segmentIndex == 1:
+	switch segmentIndex {
+	case 1:
 		role = fmt.Sprintf("第 1/%d 段（开篇）", totalSegments)
-	case segmentIndex == totalSegments:
+	case totalSegments:
 		role = fmt.Sprintf("第 %d/%d 段（收束）", segmentIndex, totalSegments)
 	default:
 		role = fmt.Sprintf("第 %d/%d 段（承接推进）", segmentIndex, totalSegments)
@@ -140,11 +140,12 @@ func BuildSegmentInstruction(baseInstruction string, segmentIndex, totalSegments
 	b.WriteString("\n\n")
 	b.WriteString("【本段写作任务】\n")
 	fmt.Fprintf(&b, "请撰写本章%s，约 %d 字（正文不少于 %d 字）。\n", role, segmentWords, minSeg)
-	if segmentIndex == 1 {
+	switch segmentIndex {
+	case 1:
 		b.WriteString("任务: 建立场景、人物状态与本章冲突起点；仅写本段，不要试图写完一整章。\n")
-	} else if segmentIndex == totalSegments {
+	case totalSegments:
 		b.WriteString("任务: 紧接上文推进剧情，完成本章高潮或转折，并以完整句子收束，可留适度悬念。\n")
-	} else {
+	default:
 		b.WriteString("任务: 紧接上文继续推进情节，保持叙事节奏与人物口吻一致；仅写本段。\n")
 	}
 	if openingSample != "" && segmentIndex > 1 {

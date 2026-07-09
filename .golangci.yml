@@ -3,8 +3,35 @@ version: "2"
 run:
   timeout: 5m
 
+formatters:
+  enable:
+    - gofmt
+
 linters:
   default: none
   enable:
     - govet
     - ineffassign
+    - errcheck
+    - staticcheck
+    - unused
+    - misspell
+
+linters-settings:
+  errcheck:
+    check-type-assertions: false
+    check-blank: false
+  staticcheck:
+    checks: ["all", "-SA1019"]  # allow some deprecated for now (k8s compat)
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-rules:
+    - path: .*_test\.go$
+      linters:
+        - errcheck
+    - path: api/v1alpha1/groupversion_info\.go
+      text: "SA1019"
+      linters:
+        - staticcheck

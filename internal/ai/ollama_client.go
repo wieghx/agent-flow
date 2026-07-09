@@ -46,15 +46,15 @@ type OllamaOptions struct {
 
 // OllamaChatResponse 聊天响应
 type OllamaChatResponse struct {
-	Model            string `json:"model"`
-	CreatedAt        string `json:"created_at"`
-	Message          struct {
+	Model     string `json:"model"`
+	CreatedAt string `json:"created_at"`
+	Message   struct {
 		Role    string `json:"role"`
 		Content string `json:"content"`
 	} `json:"message"`
-	Done             bool `json:"done"`
-	PromptEvalCount  int  `json:"prompt_eval_count"`
-	EvalCount        int  `json:"eval_count"`
+	Done            bool `json:"done"`
+	PromptEvalCount int  `json:"prompt_eval_count"`
+	EvalCount       int  `json:"eval_count"`
 }
 
 // NewOllamaClient 创建 Ollama 客户端
@@ -112,7 +112,7 @@ func (c *OllamaClient) Chat(ctx context.Context, systemPrompt, userMessage strin
 	if err != nil {
 		return ChatResult{}, fmt.Errorf("发送请求失败：%w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -163,7 +163,7 @@ func (c *OllamaClient) Generate(ctx context.Context, prompt string) (string, err
 	if err != nil {
 		return "", fmt.Errorf("发送请求失败：%w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -196,7 +196,7 @@ func (c *OllamaClient) Check(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("无法连接到 Ollama 服务：%w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	return nil
 }
@@ -214,7 +214,7 @@ func (c *OllamaClient) ListModels(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("无法连接到 Ollama 服务：%w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var result map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {

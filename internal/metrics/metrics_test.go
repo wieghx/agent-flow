@@ -23,16 +23,16 @@ func TestRecordAIRequestAndSnapshot(t *testing.T) {
 }
 
 func TestWorkflowReconcileResult(t *testing.T) {
-	if got := WorkflowReconcileResult(errors.New("x"), false, 0); got != "error" {
+	if got := WorkflowReconcileResult(errors.New("x"), 0); got != "error" {
 		t.Fatalf("got %q", got)
 	}
-	if got := WorkflowReconcileResult(nil, true, 0); got != "requeue" {
+	if got := WorkflowReconcileResult(nil, time.Second); got != "requeue" {
 		t.Fatalf("got %q", got)
 	}
-	if got := WorkflowReconcileResult(nil, false, 5*time.Second); got != "requeue" {
+	if got := WorkflowReconcileResult(nil, 5*time.Second); got != "requeue" {
 		t.Fatalf("got %q", got)
 	}
-	if got := WorkflowReconcileResult(nil, false, 0); got != "ok" {
+	if got := WorkflowReconcileResult(nil, 0); got != "ok" {
 		t.Fatalf("got %q", got)
 	}
 }

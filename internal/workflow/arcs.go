@@ -68,7 +68,7 @@ func ArcEndFromStepID(stepID string) (int, bool) {
 // BuildArcSummaryInstruction creates prompt for arc recap task.
 func BuildArcSummaryInstruction(wf *agentflowiov1alpha1.Workflow, outline *NovelOutline, start, end, width int) string {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("你是小说编辑。请阅读第%d章到第%d章的内容，生成本故事弧摘要。\n", start, end))
+	fmt.Fprintf(&b, "你是小说编辑。请阅读第%d章到第%d章的内容，生成本故事弧摘要。\n", start, end)
 	if outline != nil {
 		fmt.Fprintf(&b, "书名: %s\n", outline.Title)
 	}

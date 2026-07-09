@@ -11,7 +11,7 @@ import (
 
 var (
 	mu      sync.RWMutex
-	logger  = slog.Default()
+	logger               = slog.Default()
 	handler slog.Handler = slog.Default().Handler()
 )
 

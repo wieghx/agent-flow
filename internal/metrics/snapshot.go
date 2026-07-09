@@ -143,4 +143,3 @@ func metricValue(m *dto.Metric) float64 {
 	}
 	return 0
 }
-

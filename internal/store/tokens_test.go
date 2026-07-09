@@ -17,7 +17,7 @@ func TestRecordTaskTokens(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	defer st.Close()
+	defer func() { _ = st.Close() }()
 	s, ok := st.(*SQLStore)
 	if !ok {
 		t.Fatal("expected *SQLStore")

@@ -29,7 +29,7 @@ func TestSQLStoreOutlineAndChapters(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open() err = %v", err)
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 
 	wf := testWorkflow(t)
 	ctx := context.Background()

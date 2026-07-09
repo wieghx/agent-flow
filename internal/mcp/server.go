@@ -94,7 +94,7 @@ func (s *MCPServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (s *MCPServer) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	writeJSON(w, map[string]string{"status": "ok"})
 }
 
 func (s *MCPServer) handleToolList(w http.ResponseWriter, r *http.Request) {
@@ -103,7 +103,7 @@ func (s *MCPServer) handleToolList(w http.ResponseWriter, r *http.Request) {
 		infos = append(infos, ToolInfo{Name: t.Name(), Description: t.Description()})
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"tools": infos})
+	writeJSON(w, map[string]interface{}{"tools": infos})
 }
 
 func (s *MCPServer) handleToolCall(w http.ResponseWriter, r *http.Request) {
@@ -178,7 +178,7 @@ func (s *MCPServer) handleAIChat(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, ChatResponse{Error: fmt.Sprintf("AI request failed: %v", err)})
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))
 	if err != nil {
@@ -213,7 +213,7 @@ func (s *MCPServer) handleAIChat(w http.ResponseWriter, r *http.Request) {
 
 func writeJSON(w http.ResponseWriter, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(v)
+	_ = json.NewEncoder(w).Encode(v)
 }
 
 func min(a, b int) int {

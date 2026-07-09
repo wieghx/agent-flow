@@ -100,12 +100,16 @@ type Response struct {
 	Error   string      `json:"error,omitempty"`
 }
 
+func writeSSE(w http.ResponseWriter, format string, args ...any) {
+	_, _ = fmt.Fprintf(w, format, args...)
+}
+
 // --- 路由处理器 ---
 
 // handleIndex 首页
 func (a *API) handleIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(Response{
+	writeJSON(w, Response{
 		Success: true,
 		Message: "Agent Flow Chat API",
 		Data: map[string]string{
@@ -130,7 +134,7 @@ func (a *API) handleChat(w http.ResponseWriter, r *http.Request) {
 	var req ChatRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(Response{
+		writeJSON(w, Response{
 			Success: false,
 			Error:   err.Error(),
 		})
@@ -140,7 +144,7 @@ func (a *API) handleChat(w http.ResponseWriter, r *http.Request) {
 	assistantMsg, taskRequest, workflowRequest := a.router.SendMessage(req.Role, req.Message)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(Response{
+	writeJSON(w, Response{
 		Success: true,
 		Message: "Message processed",
 		Data: map[string]interface{}{
@@ -163,7 +167,7 @@ func (a *API) handlePendingTasks(w http.ResponseWriter, r *http.Request) {
 	tasks := a.router.ListPendingTasks()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(Response{
+	writeJSON(w, Response{
 		Success: true,
 		Data: map[string]interface{}{
 			"count": len(tasks),
@@ -188,7 +192,7 @@ func (a *API) handleApproveTask(w http.ResponseWriter, r *http.Request) {
 	var req ApproveRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(Response{
+		writeJSON(w, Response{
 			Success: false,
 			Error:   err.Error(),
 		})
@@ -198,7 +202,7 @@ func (a *API) handleApproveTask(w http.ResponseWriter, r *http.Request) {
 	task, err := a.router.ApproveTask(req.TaskID, req.Approver)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(Response{
+		writeJSON(w, Response{
 			Success: false,
 			Error:   err.Error(),
 		})
@@ -206,7 +210,7 @@ func (a *API) handleApproveTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(Response{
+	writeJSON(w, Response{
 		Success: true,
 		Message: "Task approved",
 		Data:    task,
@@ -229,7 +233,7 @@ func (a *API) handleRejectTask(w http.ResponseWriter, r *http.Request) {
 	var req RejectRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(Response{
+		writeJSON(w, Response{
 			Success: false,
 			Error:   err.Error(),
 		})
@@ -238,7 +242,7 @@ func (a *API) handleRejectTask(w http.ResponseWriter, r *http.Request) {
 
 	if err := a.router.RejectTask(req.TaskID, req.Reason); err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(Response{
+		writeJSON(w, Response{
 			Success: false,
 			Error:   err.Error(),
 		})
@@ -246,7 +250,7 @@ func (a *API) handleRejectTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(Response{
+	writeJSON(w, Response{
 		Success: true,
 		Message: "Task rejected",
 	})
@@ -272,7 +276,7 @@ func (a *API) handleConversation(w http.ResponseWriter, r *http.Request) {
 	conv := a.router.GetCurrentConversation()
 	if conv == nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(Response{
+		writeJSON(w, Response{
 			Success: false,
 			Error:   "No active conversation",
 		})
@@ -280,7 +284,7 @@ func (a *API) handleConversation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(Response{
+	writeJSON(w, Response{
 		Success: true,
 		Data: ConversationResponse{
 			ID:        conv.ID,
@@ -343,7 +347,7 @@ func (a *API) handleTasks(w http.ResponseWriter, r *http.Request) {
 	taskList := &agentflowiov1alpha1.TaskList{}
 	if err := a.client.List(r.Context(), taskList, listOpts...); err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(Response{
+		writeJSON(w, Response{
 			Success: false,
 			Error:   err.Error(),
 		})
@@ -367,7 +371,7 @@ func (a *API) handleTasks(w http.ResponseWriter, r *http.Request) {
 		}
 		completionAt := ""
 		if task.Status.CompletionTime != nil {
-			completionAt = task.Status.CompletionTime.Time.Format("2006-01-02 15:04:05")
+			completionAt = task.Status.CompletionTime.Format("2006-01-02 15:04:05")
 		}
 		workflowName := ""
 		stepID := ""
@@ -387,13 +391,13 @@ func (a *API) handleTasks(w http.ResponseWriter, r *http.Request) {
 			Passed:       passed,
 			Retries:      task.Status.Retries,
 			QualityCheck: task.Status.QualityCheck,
-			CreatedAt:    task.CreationTimestamp.Time.Format("2006-01-02 15:04:05"),
+			CreatedAt:    task.CreationTimestamp.Format("2006-01-02 15:04:05"),
 			CompletionAt: completionAt,
 		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(Response{
+	writeJSON(w, Response{
 		Success: true,
 		Data: map[string]interface{}{
 			"count": len(tasks),
@@ -412,7 +416,7 @@ func (a *API) handleCreateTask(w http.ResponseWriter, r *http.Request) {
 	var req CreateTaskRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(Response{
+		writeJSON(w, Response{
 			Success: false,
 			Error:   err.Error(),
 		})
@@ -460,7 +464,7 @@ func (a *API) handleCreateTask(w http.ResponseWriter, r *http.Request) {
 
 	if err := a.client.Create(r.Context(), task); err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(Response{
+		writeJSON(w, Response{
 			Success: false,
 			Error:   err.Error(),
 		})
@@ -468,7 +472,7 @@ func (a *API) handleCreateTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(Response{
+	writeJSON(w, Response{
 		Success: true,
 		Message: fmt.Sprintf("Task %s created", req.Name),
 		Data:    task,
@@ -504,7 +508,7 @@ func (a *API) handleTaskLogs(w http.ResponseWriter, r *http.Request, taskName st
 	// 3. Get the Pod logs from the cluster
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(Response{
+	writeJSON(w, Response{
 		Success: false,
 		Error:   "Log retrieval requires pod access. Use kubectl logs directly.",
 	})
@@ -526,7 +530,7 @@ func (a *API) handleDeleteTask(w http.ResponseWriter, r *http.Request, taskName 
 
 	if err := a.client.Delete(r.Context(), task); err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(Response{
+		writeJSON(w, Response{
 			Success: false,
 			Error:   err.Error(),
 		})
@@ -534,7 +538,7 @@ func (a *API) handleDeleteTask(w http.ResponseWriter, r *http.Request, taskName 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(Response{
+	writeJSON(w, Response{
 		Success: true,
 		Message: fmt.Sprintf("Task %s/%s deleted", namespace, taskName),
 	})
@@ -566,12 +570,12 @@ func (a *API) handleTaskEvals(w http.ResponseWriter, r *http.Request) {
 	records, err := store.ListEvalHistory(r.Context(), namespace, taskName)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(Response{Success: false, Error: err.Error()})
+		writeJSON(w, Response{Success: false, Error: err.Error()})
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(Response{
+	writeJSON(w, Response{
 		Success: true,
 		Data: map[string]interface{}{
 			"count": len(records),
@@ -622,7 +626,7 @@ func (a *API) handleTaskEvents(w http.ResponseWriter, r *http.Request) {
 	}
 	defer cancel()
 
-	fmt.Fprintf(w, "event: connected\ndata: {\"task\":\"%s\",\"namespace\":\"%s\"}\n\n", taskName, namespace)
+	writeSSE(w, "event: connected\ndata: {\"task\":\"%s\",\"namespace\":\"%s\"}\n\n", taskName, namespace)
 	flusher.Flush()
 
 	heartbeat := time.NewTicker(15 * time.Second)
@@ -633,7 +637,7 @@ func (a *API) handleTaskEvents(w http.ResponseWriter, r *http.Request) {
 		case <-ctx.Done():
 			return
 		case <-heartbeat.C:
-			fmt.Fprintf(w, "event: ping\ndata: {}\n\n")
+			writeSSE(w, "event: ping\ndata: {}\n\n")
 			flusher.Flush()
 		case event, ok := <-events:
 			if !ok {
@@ -643,7 +647,7 @@ func (a *API) handleTaskEvents(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				continue
 			}
-			fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event.Step, data)
+			writeSSE(w, "event: %s\ndata: %s\n\n", event.Step, data)
 			flusher.Flush()
 		}
 	}
@@ -681,7 +685,7 @@ func (a *API) handleWorkflows(w http.ResponseWriter, r *http.Request) {
 	wfList := &agentflowiov1alpha1.WorkflowList{}
 	if err := a.client.List(r.Context(), wfList); err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(Response{Success: false, Error: err.Error()})
+		writeJSON(w, Response{Success: false, Error: err.Error()})
 		return
 	}
 
@@ -689,7 +693,7 @@ func (a *API) handleWorkflows(w http.ResponseWriter, r *http.Request) {
 	for _, wf := range wfList.Items {
 		completionAt := ""
 		if wf.Status.CompletionTime != nil {
-			completionAt = wf.Status.CompletionTime.Time.Format("2006-01-02 15:04:05")
+			completionAt = wf.Status.CompletionTime.Format("2006-01-02 15:04:05")
 		}
 		workflows = append(workflows, WorkflowListResponse{
 			Name:         wf.Name,
@@ -700,13 +704,13 @@ func (a *API) handleWorkflows(w http.ResponseWriter, r *http.Request) {
 			Message:      wf.Status.Message,
 			Template:     wf.Spec.Template,
 			Workspace:    wf.Status.WorkspacePath,
-			CreatedAt:    wf.CreationTimestamp.Time.Format("2006-01-02 15:04:05"),
+			CreatedAt:    wf.CreationTimestamp.Format("2006-01-02 15:04:05"),
 			CompletionAt: completionAt,
 		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(Response{
+	writeJSON(w, Response{
 		Success: true,
 		Data: map[string]interface{}{
 			"count":     len(workflows),
@@ -740,12 +744,12 @@ func (a *API) handleWorkflowDetail(w http.ResponseWriter, r *http.Request) {
 	wf := &agentflowiov1alpha1.Workflow{}
 	if err := a.client.Get(r.Context(), client.ObjectKey{Namespace: namespace, Name: name}, wf); err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(Response{Success: false, Error: err.Error()})
+		writeJSON(w, Response{Success: false, Error: err.Error()})
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(Response{Success: true, Data: wf})
+	writeJSON(w, Response{Success: true, Data: wf})
 }
 
 func (a *API) handlePendingWorkflows(w http.ResponseWriter, r *http.Request) {
@@ -756,7 +760,7 @@ func (a *API) handlePendingWorkflows(w http.ResponseWriter, r *http.Request) {
 
 	workflows := a.router.ListPendingWorkflows()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(Response{
+	writeJSON(w, Response{
 		Success: true,
 		Data: map[string]interface{}{
 			"count":     len(workflows),
@@ -779,19 +783,19 @@ func (a *API) handleApproveWorkflow(w http.ResponseWriter, r *http.Request) {
 	var req ApproveWorkflowRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(Response{Success: false, Error: err.Error()})
+		writeJSON(w, Response{Success: false, Error: err.Error()})
 		return
 	}
 
 	wf, err := a.router.ApproveWorkflow(req.WorkflowID, req.Approver)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(Response{Success: false, Error: err.Error()})
+		writeJSON(w, Response{Success: false, Error: err.Error()})
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(Response{
+	writeJSON(w, Response{
 		Success: true,
 		Message: "Workflow approved",
 		Data:    wf,
@@ -812,18 +816,18 @@ func (a *API) handleRejectWorkflow(w http.ResponseWriter, r *http.Request) {
 	var req RejectWorkflowRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(Response{Success: false, Error: err.Error()})
+		writeJSON(w, Response{Success: false, Error: err.Error()})
 		return
 	}
 
 	if err := a.router.RejectWorkflow(req.WorkflowID, req.Reason); err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(Response{Success: false, Error: err.Error()})
+		writeJSON(w, Response{Success: false, Error: err.Error()})
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(Response{Success: true, Message: "Workflow rejected"})
+	writeJSON(w, Response{Success: true, Message: "Workflow rejected"})
 }
 
 func (a *API) handleCreateWorkflow(w http.ResponseWriter, r *http.Request) {
@@ -835,7 +839,7 @@ func (a *API) handleCreateWorkflow(w http.ResponseWriter, r *http.Request) {
 	var req CreateWorkflowRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(Response{Success: false, Error: err.Error()})
+		writeJSON(w, Response{Success: false, Error: err.Error()})
 		return
 	}
 
@@ -859,17 +863,17 @@ func (a *API) handleCreateWorkflow(w http.ResponseWriter, r *http.Request) {
 	wf, err := flow.NewWorkflowCRD(template, req.Prompt, req.Params, name, namespace)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(Response{Success: false, Error: err.Error()})
+		writeJSON(w, Response{Success: false, Error: err.Error()})
 		return
 	}
 	if err := a.client.Create(r.Context(), wf); err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(Response{Success: false, Error: err.Error()})
+		writeJSON(w, Response{Success: false, Error: err.Error()})
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(Response{
+	writeJSON(w, Response{
 		Success: true,
 		Message: fmt.Sprintf("Workflow %s created", name),
 		Data:    wf,
@@ -882,13 +886,13 @@ func (a *API) handleOutputFile(w http.ResponseWriter, r *http.Request) {
 	filePath, err := safepath.ResolveUnderRoot("/data/outputs", rel)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(Response{Success: false, Error: err.Error()})
+		writeJSON(w, Response{Success: false, Error: err.Error()})
 		return
 	}
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(Response{
+		writeJSON(w, Response{
 			Success: false,
 			Error:   "文件不存在: " + filePath,
 		})
@@ -896,7 +900,7 @@ func (a *API) handleOutputFile(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filepath.Base(filePath)))
-	w.Write(data)
+	_, _ = w.Write(data)
 }
 
 // StartServer 启动 API 服务器

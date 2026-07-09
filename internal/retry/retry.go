@@ -19,13 +19,13 @@ const (
 type FailureKind string
 
 const (
-	FailureEmpty      FailureKind = "empty"
-	FailureTooShort   FailureKind = "too_short"
-	FailureTruncated  FailureKind = "truncated"
-	FailureInvalid    FailureKind = "invalid"
-	FailureQuality    FailureKind = "quality"
-	FailureTransient  FailureKind = "transient"
-	FailureUnknown    FailureKind = "unknown"
+	FailureEmpty        FailureKind = "empty"
+	FailureTooShort     FailureKind = "too_short"
+	FailureTruncated    FailureKind = "truncated"
+	FailureInvalid      FailureKind = "invalid"
+	FailureQuality      FailureKind = "quality"
+	FailureTransient    FailureKind = "transient"
+	FailureUnknown      FailureKind = "unknown"
 	FailureNonRetryable FailureKind = "non_retryable"
 )
 

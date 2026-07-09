@@ -98,7 +98,7 @@ func (t *K8sGetTool) Execute(ctx context.Context, input map[string]interface{}) 
 
 	gvr, ok := resourceAliases[strings.ToLower(resourceStr)]
 	if !ok {
-		return "", fmt.Errorf("unknown resource type: %s. Supported: pods, services, deployments, configmaps, secrets, nodes, tasks, sandboxes, etc.", resourceStr)
+		return "", fmt.Errorf("unknown resource type: %s (supported: pods, services, deployments, configmaps, secrets, nodes, tasks, sandboxes, etc)", resourceStr)
 	}
 
 	// Cluster-scoped resources don't use namespace

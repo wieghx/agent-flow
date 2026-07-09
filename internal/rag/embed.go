@@ -19,7 +19,7 @@ const VectorsPath = "rag/vectors.json"
 
 // VectorStore persists chunk embeddings on disk.
 type VectorStore struct {
-	Model   string             `json:"model,omitempty"`
+	Model   string               `json:"model,omitempty"`
 	Vectors map[string][]float32 `json:"vectors"`
 }
 
@@ -103,7 +103,7 @@ func (e *openAICompatEmbedder) Embed(ctx context.Context, texts []string) ([][]f
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("embeddings API %d: %s", resp.StatusCode, string(body))

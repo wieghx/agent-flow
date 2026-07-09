@@ -99,7 +99,7 @@ func (s *SQLStore) ListChapters(ctx context.Context, namespace, name string) ([]
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []ChapterEntry
 	for rows.Next() {

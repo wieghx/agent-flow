@@ -142,12 +142,12 @@ const (
 	ChapterModeSequential = "sequential"
 	ChapterModePipeline   = "pipeline"
 
-	DefaultMaxParallel        = 4
-	DefaultChapterPipeline    = 4
-	DefaultStepMaxRetries     = 3
-	DefaultStepRetryBaseSec   = 20
-	DefaultStepRetryMaxSec    = 180
-	DefaultTaskMaxRetries     = 5
+	DefaultMaxParallel      = 4
+	DefaultChapterPipeline  = 4
+	DefaultStepMaxRetries   = 3
+	DefaultStepRetryBaseSec = 20
+	DefaultStepRetryMaxSec  = 180
+	DefaultTaskMaxRetries   = 5
 )
 
 // IsParallelMode reports whether the workflow should dispatch multiple ready steps.

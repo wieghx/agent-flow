@@ -54,7 +54,7 @@ func (s *SQLStore) ListLibrary(ctx context.Context) ([]LibraryEntry, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	return scanLibraryRows(rows)
 }
 

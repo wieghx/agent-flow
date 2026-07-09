@@ -217,7 +217,7 @@ func (s *SQLStore) MissingChapterNumbers(ctx context.Context, wf *agentflowiov1a
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var missing []int
 	for rows.Next() {

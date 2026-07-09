@@ -36,15 +36,15 @@ type WorkflowSpec struct {
 
 // WorkflowExecution controls orchestration behavior.
 type WorkflowExecution struct {
-	Mode            string `json:"mode,omitempty"`
-	MaxParallel     int    `json:"maxParallel,omitempty"`
-	ChapterMode     string `json:"chapterMode,omitempty"`
-	ChapterPipeline int    `json:"chapterPipeline,omitempty"`
-	StepMaxRetries          int `json:"stepMaxRetries,omitempty"`
-	StepRetryBaseDelaySec   int `json:"stepRetryBaseDelaySec,omitempty"`
-	StepRetryMaxDelaySec    int `json:"stepRetryMaxDelaySec,omitempty"`
-	PauseOnStepFail         bool `json:"pauseOnStepFail,omitempty"`
-	AutoApprove     bool   `json:"autoApprove,omitempty"`
+	Mode                  string `json:"mode,omitempty"`
+	MaxParallel           int    `json:"maxParallel,omitempty"`
+	ChapterMode           string `json:"chapterMode,omitempty"`
+	ChapterPipeline       int    `json:"chapterPipeline,omitempty"`
+	StepMaxRetries        int    `json:"stepMaxRetries,omitempty"`
+	StepRetryBaseDelaySec int    `json:"stepRetryBaseDelaySec,omitempty"`
+	StepRetryMaxDelaySec  int    `json:"stepRetryMaxDelaySec,omitempty"`
+	PauseOnStepFail       bool   `json:"pauseOnStepFail,omitempty"`
+	AutoApprove           bool   `json:"autoApprove,omitempty"`
 }
 
 // WorkflowWorkspace defines artifact storage.

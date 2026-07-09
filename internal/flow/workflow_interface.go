@@ -19,17 +19,17 @@ var workflowNameSanitizer = regexp.MustCompile(`[^a-z0-9-]+`)
 
 // WorkflowRequest is a pending workflow awaiting approval.
 type WorkflowRequest struct {
-	ID          string            `json:"id"`
-	Description string            `json:"description"`
-	Template    string            `json:"template"`
-	Params      map[string]string `json:"params,omitempty"`
-	Prompt      string            `json:"prompt"`
-	ProposedName string           `json:"proposed_name,omitempty"`
-	CreatedName string            `json:"created_name,omitempty"`
-	CreatedAt   metav1.Time       `json:"created_at"`
-	Approved    bool              `json:"approved"`
-	ApprovedAt  *metav1.Time      `json:"approved_at,omitempty"`
-	ApprovedBy  string            `json:"approved_by,omitempty"`
+	ID           string            `json:"id"`
+	Description  string            `json:"description"`
+	Template     string            `json:"template"`
+	Params       map[string]string `json:"params,omitempty"`
+	Prompt       string            `json:"prompt"`
+	ProposedName string            `json:"proposed_name,omitempty"`
+	CreatedName  string            `json:"created_name,omitempty"`
+	CreatedAt    metav1.Time       `json:"created_at"`
+	Approved     bool              `json:"approved"`
+	ApprovedAt   *metav1.Time      `json:"approved_at,omitempty"`
+	ApprovedBy   string            `json:"approved_by,omitempty"`
 }
 
 // NewWorkflowCRD builds a Workflow CRD from template parameters.

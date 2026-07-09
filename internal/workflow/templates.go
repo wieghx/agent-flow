@@ -208,10 +208,6 @@ func novelChapterMonitorType(team bool) string {
 	return "novel-chapter"
 }
 
-func simpleOutlineStep(prompt string, chapterCount int) agentflowiov1alpha1.WorkflowStep {
-	return simpleOutlineStepWithResearch(prompt, chapterCount, false)
-}
-
 func simpleOutlineStepWithResearch(prompt string, chapterCount int, research bool) agentflowiov1alpha1.WorkflowStep {
 	researchHint := ""
 	if research {

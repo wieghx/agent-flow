@@ -133,7 +133,7 @@ func (t *HTTPRequestTool) Execute(ctx context.Context, input map[string]interfac
 	if err != nil {
 		return "", fmt.Errorf("http request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 512*1024))
 	if err != nil {

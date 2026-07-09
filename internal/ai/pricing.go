@@ -13,13 +13,13 @@ type ModelPricing struct {
 
 // Default pricing (USD per 1M tokens). Override via TOKEN_COST_MODEL env.
 var modelPricingTable = map[string]ModelPricing{
-	"deepseek-chat":  {PromptPer1M: 0.27, CompletionPer1M: 1.10},
+	"deepseek-chat":     {PromptPer1M: 0.27, CompletionPer1M: 1.10},
 	"deepseek-reasoner": {PromptPer1M: 0.55, CompletionPer1M: 2.19},
-	"grok-4.3":       {PromptPer1M: 3.00, CompletionPer1M: 15.00},
-	"grok-3":         {PromptPer1M: 3.00, CompletionPer1M: 15.00},
-	"grok-2":         {PromptPer1M: 2.00, CompletionPer1M: 10.00},
-	"gpt-4o":         {PromptPer1M: 2.50, CompletionPer1M: 10.00},
-	"gpt-4o-mini":    {PromptPer1M: 0.15, CompletionPer1M: 0.60},
+	"grok-4.3":          {PromptPer1M: 3.00, CompletionPer1M: 15.00},
+	"grok-3":            {PromptPer1M: 3.00, CompletionPer1M: 15.00},
+	"grok-2":            {PromptPer1M: 2.00, CompletionPer1M: 10.00},
+	"gpt-4o":            {PromptPer1M: 2.50, CompletionPer1M: 10.00},
+	"gpt-4o-mini":       {PromptPer1M: 0.15, CompletionPer1M: 0.60},
 }
 
 const defaultCostModel = "deepseek-chat"

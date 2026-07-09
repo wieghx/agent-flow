@@ -15,11 +15,11 @@ import (
 )
 
 const (
-	TaskTypePoetry       = "poetry"
-	TaskTypeCode         = "code"
-	TaskTypeGeneral      = "general"
-	TaskTypeNovelChapter       = "novel-chapter"
-	TaskTypeNovelChapterTeam   = "novel-chapter-team"
+	TaskTypePoetry               = "poetry"
+	TaskTypeCode                 = "code"
+	TaskTypeGeneral              = "general"
+	TaskTypeNovelChapter         = "novel-chapter"
+	TaskTypeNovelChapterTeam     = "novel-chapter-team"
 	TaskTypeNovelOutline         = "novel-outline"
 	TaskTypeNovelOutlineRefine   = "novel-outline-refine"
 	TaskTypeNovelOutlineSkeleton = "novel-outline-skeleton"

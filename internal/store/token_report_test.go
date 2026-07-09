@@ -16,7 +16,7 @@ func TestBuildTokenReport(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	defer st.Close()
+	defer func() { _ = st.Close() }()
 	s := st.(*SQLStore)
 
 	wf := &agentflowiov1alpha1.Workflow{

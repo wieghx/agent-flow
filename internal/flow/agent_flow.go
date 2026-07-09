@@ -373,7 +373,7 @@ func (n *WorkerNode) Run(ctx context.Context, input State) (State, error) {
 		var segUsage ai.TokenUsage
 		output, segUsage, err = GenerateSegmentedChapter(ctx, input.AIService, input.WorkerInstruction, input.MonitorFeedback)
 		if err != nil {
-			return input, fmt.Errorf("Worker 分段撰写失败：%w", err)
+			return input, fmt.Errorf("worker 分段撰写失败：%w", err)
 		}
 		input.TokenUsage.Add(segUsage)
 	} else {
@@ -386,7 +386,7 @@ func (n *WorkerNode) Run(ctx context.Context, input State) (State, error) {
 
 		result, err := input.AIService.WorkerChat(ctx, systemPrompt, userMessage)
 		if err != nil {
-			return input, fmt.Errorf("Worker AI 调用失败：%w", err)
+			return input, fmt.Errorf("worker AI 调用失败：%w", err)
 		}
 		input.TokenUsage.Add(result.Usage)
 		output = result.Content
@@ -406,7 +406,9 @@ func (n *WorkerNode) Run(ctx context.Context, input State) (State, error) {
 			outputDir = "/data/outputs"
 		}
 		taskDir := fmt.Sprintf("%s/%s", outputDir, input.Task.Namespace)
-		os.MkdirAll(taskDir, 0755)
+		if err := os.MkdirAll(taskDir, 0755); err != nil {
+			logger.Error(err, "failed to create output dir", "path", taskDir)
+		}
 		outputFile := fmt.Sprintf("%s/%s.txt", taskDir, input.Task.Name)
 		if err := os.WriteFile(outputFile, []byte(output), 0644); err != nil {
 			logger.Error(err, "failed to save output", "path", outputFile)
@@ -443,7 +445,7 @@ func (n *MonitorNode) Run(ctx context.Context, input State) (State, error) {
 	}
 	eval, err := RunMonitorEvaluation(ctx, input.AIService, input.WorkerInstruction, input.WorkerOutput, input.QualityThreshold, input.RetryCount, configPrompt, input.MonitorFeedback, input.MonitorTaskType, input.ConsistencyContext, tier, input.TeamMode)
 	if err != nil {
-		return input, fmt.Errorf("Monitor 评估失败：%w", err)
+		return input, fmt.Errorf("monitor 评估失败：%w", err)
 	}
 
 	input.TokenUsage.Add(eval.TokenUsage)

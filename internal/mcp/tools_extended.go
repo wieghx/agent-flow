@@ -37,7 +37,7 @@ func (t *FileAppendTool) Execute(ctx context.Context, input map[string]interface
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	if _, err := f.WriteString(content); err != nil {
 		return "", err
 	}
@@ -105,12 +105,12 @@ func (t *FileCopyTool) Execute(ctx context.Context, input map[string]interface{}
 	if err != nil {
 		return "", err
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 	out, err := os.Create(dst)
 	if err != nil {
 		return "", err
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 	n, err := io.Copy(out, in)
 	if err != nil {
 		return "", err
@@ -457,7 +457,7 @@ func (t *HTTPDownloadTool) Execute(ctx context.Context, input map[string]interfa
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= 400 {
 		return "", fmt.Errorf("download failed with status %d", resp.StatusCode)
 	}
@@ -468,7 +468,7 @@ func (t *HTTPDownloadTool) Execute(ctx context.Context, input map[string]interfa
 	if err != nil {
 		return "", err
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 	n, err := io.Copy(out, io.LimitReader(resp.Body, 10*1024*1024))
 	if err != nil {
 		return "", err

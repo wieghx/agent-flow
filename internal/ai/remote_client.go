@@ -91,7 +91,7 @@ func (c *RemoteClient) Chat(ctx context.Context, systemPrompt, userMessage strin
 	if err != nil {
 		return ChatResult{}, fmt.Errorf("发送请求失败：%w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -330,12 +330,13 @@ func (c *RemoteClient) parseJSONPath(path string) []string {
 
 	for i := 0; i < len(path); i++ {
 		ch := path[i]
-		if ch == '.' {
+		switch ch {
+		case '.':
 			if currentField.Len() > 0 {
 				fields = append(fields, currentField.String())
 				currentField.Reset()
 			}
-		} else if ch == '[' {
+		case '[':
 			if currentField.Len() > 0 {
 				fields = append(fields, currentField.String())
 				currentField.Reset()
@@ -350,7 +351,7 @@ func (c *RemoteClient) parseJSONPath(path string) []string {
 				fields = append(fields, idx)
 				i = j
 			}
-		} else {
+		default:
 			currentField.WriteByte(ch)
 		}
 	}
@@ -424,7 +425,7 @@ func (c *RemoteClient) Check(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("无法连接到远程 AI API：%w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("API 返回错误状态：%d", resp.StatusCode)

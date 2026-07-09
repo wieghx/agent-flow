@@ -18,30 +18,30 @@ import (
 
 // NovelSummary is a merged view of Workflow CRD + SQLite metadata.
 type NovelSummary struct {
-	Namespace       string            `json:"namespace"`
-	Name            string            `json:"name"`
-	Title           string            `json:"title"`
-	Synopsis        string            `json:"synopsis,omitempty"`
-	Phase           string            `json:"phase"`
-	Progress        int32             `json:"progress"`
-	CurrentStep     string            `json:"currentStep,omitempty"`
-	Message         string            `json:"message,omitempty"`
-	ChapterCount    int               `json:"chapter_count"`
-	ChaptersDone    int               `json:"chapters_done"`
-	ChaptersWriting int               `json:"chapters_writing"`
-	ChaptersFailed  int               `json:"chapters_failed"`
-	PlotsDone       int               `json:"plots_done"`
-	PlotsWriting    int               `json:"plots_writing"`
-	PlotsFailed     int               `json:"plots_failed"`
-	PipelineStage   string            `json:"pipeline_stage,omitempty"`
-	Prompt          string            `json:"prompt,omitempty"`
-	Template        string            `json:"template,omitempty"`
-	Params          map[string]string `json:"params,omitempty"`
-	WorkspacePath   string            `json:"workspace_path,omitempty"`
-	BookURL         string            `json:"book_url,omitempty"`
-	OutlineURL      string            `json:"outline_url,omitempty"`
-	CreatedAt       string            `json:"created_at"`
-	UpdatedAt       string            `json:"updated_at,omitempty"`
+	Namespace        string            `json:"namespace"`
+	Name             string            `json:"name"`
+	Title            string            `json:"title"`
+	Synopsis         string            `json:"synopsis,omitempty"`
+	Phase            string            `json:"phase"`
+	Progress         int32             `json:"progress"`
+	CurrentStep      string            `json:"currentStep,omitempty"`
+	Message          string            `json:"message,omitempty"`
+	ChapterCount     int               `json:"chapter_count"`
+	ChaptersDone     int               `json:"chapters_done"`
+	ChaptersWriting  int               `json:"chapters_writing"`
+	ChaptersFailed   int               `json:"chapters_failed"`
+	PlotsDone        int               `json:"plots_done"`
+	PlotsWriting     int               `json:"plots_writing"`
+	PlotsFailed      int               `json:"plots_failed"`
+	PipelineStage    string            `json:"pipeline_stage,omitempty"`
+	Prompt           string            `json:"prompt,omitempty"`
+	Template         string            `json:"template,omitempty"`
+	Params           map[string]string `json:"params,omitempty"`
+	WorkspacePath    string            `json:"workspace_path,omitempty"`
+	BookURL          string            `json:"book_url,omitempty"`
+	OutlineURL       string            `json:"outline_url,omitempty"`
+	CreatedAt        string            `json:"created_at"`
+	UpdatedAt        string            `json:"updated_at,omitempty"`
 	CompletionAt     string            `json:"completion_at,omitempty"`
 	PromptTokens     int               `json:"prompt_tokens,omitempty"`
 	CompletionTokens int               `json:"completion_tokens,omitempty"`
@@ -50,13 +50,13 @@ type NovelSummary struct {
 
 // ImportNovelRequest imports an existing novel text and runs 拆书 + optional续写.
 type ImportNovelRequest struct {
-	Name             string            `json:"name"`
-	Namespace        string            `json:"namespace"`
-	Title            string            `json:"title"`
-	Prompt           string            `json:"prompt"`
-	Text             string            `json:"text"`
-	ContinueWriting  bool              `json:"continue_writing"`
-	Params           map[string]string `json:"params"`
+	Name            string            `json:"name"`
+	Namespace       string            `json:"namespace"`
+	Title           string            `json:"title"`
+	Prompt          string            `json:"prompt"`
+	Text            string            `json:"text"`
+	ContinueWriting bool              `json:"continue_writing"`
+	Params          map[string]string `json:"params"`
 }
 
 // CreateNovelRequest creates a novel workflow from the library UI.
@@ -396,20 +396,20 @@ func (a *API) getNovelSummary(ctx context.Context, namespace, name string) (*Nov
 
 func (a *API) buildSummaryFromWorkflow(wf *agentflowiov1alpha1.Workflow, lib *store.LibraryEntry) NovelSummary {
 	s := NovelSummary{
-		Namespace:    wf.Namespace,
-		Name:         wf.Name,
-		Phase:        string(wf.Status.Phase),
-		Progress:     wf.Status.Progress.Percent,
-		CurrentStep:  wf.Status.CurrentStep,
-		Message:      wf.Status.Message,
-		Prompt:       wf.Spec.Prompt,
-		Template:     wf.Spec.Template,
-		Params:       wf.Spec.Params,
+		Namespace:     wf.Namespace,
+		Name:          wf.Name,
+		Phase:         string(wf.Status.Phase),
+		Progress:      wf.Status.Progress.Percent,
+		CurrentStep:   wf.Status.CurrentStep,
+		Message:       wf.Status.Message,
+		Prompt:        wf.Spec.Prompt,
+		Template:      wf.Spec.Template,
+		Params:        wf.Spec.Params,
 		WorkspacePath: wf.Status.WorkspacePath,
-		CreatedAt:    wf.CreationTimestamp.Time.Format("2006-01-02 15:04:05"),
+		CreatedAt:     wf.CreationTimestamp.Format("2006-01-02 15:04:05"),
 	}
 	if wf.Status.CompletionTime != nil {
-		s.CompletionAt = wf.Status.CompletionTime.Time.Format("2006-01-02 15:04:05")
+		s.CompletionAt = wf.Status.CompletionTime.Format("2006-01-02 15:04:05")
 	}
 	if lib != nil {
 		a.applyLibraryEntry(&s, lib)
@@ -508,7 +508,7 @@ func artifactURLs(workspace string) (bookURL, outlineURL string) {
 	return bookURL, outlineURL
 }
 
-func writeJSON(w http.ResponseWriter, resp Response) {
+func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(v)
 }

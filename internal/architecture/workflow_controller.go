@@ -43,7 +43,7 @@ type WorkflowController struct {
 func (c *WorkflowController) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	start := time.Now()
 	defer func() {
-		metrics.RecordWorkflowReconcile(metrics.WorkflowReconcileResult(err, result.Requeue, result.RequeueAfter), time.Since(start))
+		metrics.RecordWorkflowReconcile(metrics.WorkflowReconcileResult(err, result.RequeueAfter), time.Since(start))
 	}()
 
 	wf := &agentflowiov1alpha1.Workflow{}
@@ -58,7 +58,7 @@ func (c *WorkflowController) Reconcile(ctx context.Context, req ctrl.Request) (r
 		if err = c.initWorkflow(ctx, wf); err != nil {
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{Requeue: true}, nil
+		return ctrl.Result{RequeueAfter: time.Second}, nil
 	}
 
 	if wf.Status.Phase == agentflowiov1alpha1.WorkflowPhaseSucceeded ||
@@ -157,7 +157,7 @@ func (c *WorkflowController) reconcileReadySteps(ctx context.Context, wf *agentf
 			if err := c.runLocalMergeStep(ctx, wf, step); err != nil {
 				return c.failWorkflow(ctx, wf, err)
 			}
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: time.Second}, nil
 		}
 
 		taskName := taskNameForWorkflowStep(wf.Name, step.ID)

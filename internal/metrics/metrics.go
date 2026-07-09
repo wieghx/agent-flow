@@ -119,11 +119,11 @@ func RecordWorkflowReconcile(result string, duration time.Duration) {
 }
 
 // WorkflowReconcileResult maps reconcile outcome to a metric label.
-func WorkflowReconcileResult(err error, requeue bool, requeueAfter time.Duration) string {
+func WorkflowReconcileResult(err error, requeueAfter time.Duration) string {
 	if err != nil {
 		return "error"
 	}
-	if requeue || requeueAfter > 0 {
+	if requeueAfter > 0 {
 		return "requeue"
 	}
 	return "ok"

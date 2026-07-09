@@ -18,17 +18,17 @@ import (
 // RegenerateChapterRequest triggers a single chapter/plot rewrite workflow.
 type RegenerateChapterRequest struct {
 	Instruction string `json:"instruction"`
-	Layer         string `json:"layer"`
+	Layer       string `json:"layer"`
 }
 
 // RegenerateChapterResponse describes the spawned rewrite workflow.
 type RegenerateChapterResponse struct {
-	ParentWorkflow   string `json:"parent_workflow"`
-	RewriteWorkflow  string `json:"rewrite_workflow"`
-	Namespace        string `json:"namespace"`
-	ChapterNum       int    `json:"chapter_num"`
-	Layer            string `json:"layer"`
-	WorkspacePath    string `json:"workspace_path,omitempty"`
+	ParentWorkflow  string `json:"parent_workflow"`
+	RewriteWorkflow string `json:"rewrite_workflow"`
+	Namespace       string `json:"namespace"`
+	ChapterNum      int    `json:"chapter_num"`
+	Layer           string `json:"layer"`
+	WorkspacePath   string `json:"workspace_path,omitempty"`
 }
 
 func (a *API) handleNovelRegenerateChapter(w http.ResponseWriter, r *http.Request, namespace, name string, chapterNum int) {

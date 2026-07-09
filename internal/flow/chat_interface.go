@@ -341,9 +341,10 @@ func (r *ChatRouter) buildConversationHistory() string {
 	}
 	for _, msg := range r.currentConv.Messages[start:] {
 		role := "用户"
-		if msg.Role == "assistant" {
+		switch msg.Role {
+		case "assistant":
 			role = "助手"
-		} else if msg.Role == "system" {
+		case "system":
 			role = "系统"
 		}
 		history = append(history, fmt.Sprintf("%s: %s", role, msg.Content))

@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	agentflowiov1alpha1 "agent-flow/api/v1alpha1"
-	_ "modernc.org/sqlite"
 	wfengine "agent-flow/internal/workflow"
+	_ "modernc.org/sqlite"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -17,7 +17,7 @@ func TestLibraryListAndDelete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	s := &SQLStore{db: db, driver: "sqlite"}
 
 	ctx := context.Background()

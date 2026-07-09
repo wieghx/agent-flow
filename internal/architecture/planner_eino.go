@@ -13,8 +13,8 @@ import (
 	"agent-flow/internal/cache"
 	"agent-flow/internal/config"
 	"agent-flow/internal/flow"
-	"agent-flow/internal/metrics"
 	applog "agent-flow/internal/log"
+	"agent-flow/internal/metrics"
 	retryutil "agent-flow/internal/retry"
 	wfengine "agent-flow/internal/workflow"
 	sandboxv1beta1 "sigs.k8s.io/agent-sandbox/api/v1beta1"
@@ -44,9 +44,6 @@ type TaskPlannerEino struct {
 	Retry         config.RetryConfig
 	Quality       config.QualityConfig
 	networkConfig *SandboxNetworkConfig
-
-	// eino 流程
-	agentFlow *flow.AgentFlow
 }
 
 // +kubebuilder:rbac:groups=agentflow.io,resources=tasks,verbs=get;list;watch;create;update;patch;delete
@@ -90,7 +87,7 @@ func (p *TaskPlannerEino) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		if err := p.Status().Update(ctx, task); err != nil {
 			return ctrl.Result{}, fmt.Errorf("更新任务状态为 Pending 失败：%w", err)
 		}
-		return ctrl.Result{Requeue: true}, nil
+		return ctrl.Result{RequeueAfter: time.Second}, nil
 	}
 
 	// 第一阶段：创建 Sandbox（如果还没有）
@@ -109,7 +106,7 @@ func (p *TaskPlannerEino) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			}
 			p.publishTaskEvent(ctx, task, cache.EventStepSandbox, "已跳过 Sandbox（AGENTFLOW_SKIP_SANDBOX）", 0, 0)
 			logger.Info("跳过 Sandbox，进入 AI 执行", "Task", task.Name)
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: time.Second}, nil
 		}
 
 		sandboxName := fmt.Sprintf("%s-sandbox", task.Name)
@@ -137,13 +134,13 @@ func (p *TaskPlannerEino) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			}
 			p.publishTaskEvent(ctx, task, cache.EventStepSandbox, fmt.Sprintf("Sandbox 已创建: %s", sandbox.Name), 0, 0)
 			logger.Info("任务状态已更新为 Running", "Task", task.Name, "Sandbox", sandbox.Name)
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: time.Second}, nil
 		}
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("获取 Sandbox 失败：%w", err)
 		}
 		// Sandbox 已存在，继续
-		return ctrl.Result{Requeue: true}, nil
+		return ctrl.Result{RequeueAfter: time.Second}, nil
 	}
 
 	// 第二阶段：Running — 等待 Sandbox 完成（或本地跳过）
@@ -230,7 +227,7 @@ func (p *TaskPlannerEino) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 					MonitorFeedback:   feedback,
 				})
 				if err != nil {
-					return ctrl.Result{}, fmt.Errorf("Worker 执行失败：%w", err)
+					return ctrl.Result{}, fmt.Errorf("worker 执行失败：%w", err)
 				}
 				if err := flow.ValidateWorkerOutput(workerInstruction, state.WorkerOutput, taskType); err != nil {
 					lastErr = err
@@ -305,14 +302,15 @@ func (p *TaskPlannerEino) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 		logger.Info("Task 最终状态已更新", "Task", task.Name, "Phase", task.Status.Phase, "result", result)
 
-		if task.Status.Phase == agentflowiov1alpha1.TaskPhaseSucceeded {
+		switch task.Status.Phase {
+		case agentflowiov1alpha1.TaskPhaseSucceeded:
 			score := int32(0)
 			if task.Status.QualityCheck != nil {
 				score = task.Status.QualityCheck.Score
 			}
 			metrics.RecordTaskCompletion(string(task.Status.Phase))
 			p.publishTaskEvent(ctx, task, cache.EventStepSucceeded, task.Status.Message, int(task.Status.Retries), int(score))
-		} else if task.Status.Phase == agentflowiov1alpha1.TaskPhaseFailed {
+		case agentflowiov1alpha1.TaskPhaseFailed:
 			metrics.RecordTaskCompletion(string(task.Status.Phase))
 			p.publishTaskEvent(ctx, task, cache.EventStepFailed, task.Status.Message, int(task.Status.Retries), 0)
 		}

@@ -361,7 +361,7 @@ func httpGet(ctx context.Context, client *http.Client, rawURL string) ([]byte, e
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("http %d for %s", resp.StatusCode, rawURL)
 	}
@@ -414,7 +414,7 @@ func intFromInput(input map[string]interface{}, key string, fallback int) int {
 		return int(v)
 	case string:
 		var n int
-		fmt.Sscanf(v, "%d", &n)
+		_, _ = fmt.Sscanf(v, "%d", &n)
 		if n > 0 {
 			return n
 		}
