@@ -3,7 +3,7 @@ module agent-flow
 go 1.26.2
 
 require (
-	github.com/cloudwego/eino v0.9.4
+	github.com/cloudwego/eino v0.9.12
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/redis/go-redis/v9 v9.21.0
 	gopkg.in/yaml.v3 v3.0.1

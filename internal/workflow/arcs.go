@@ -71,36 +71,6 @@ func BuildArcSummaryInstruction(wf *agentflowiov1alpha1.Workflow, outline *Novel
 	return prompts.BuildArcSummaryInstruction(wf.Spec.Prompt, start, end, width)
 }
 
-// legacyBuildArcSummaryInstruction is kept for reference.
-func legacyBuildArcSummaryInstruction(wf *agentflowiov1alpha1.Workflow, outline *NovelOutline, start, end, width int) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "你是小说编辑。请阅读第%d章到第%d章的内容，生成本故事弧摘要。\n", start, end)
-	if outline != nil {
-		fmt.Fprintf(&b, "书名: %s\n", outline.Title)
-	}
-	b.WriteString(`
-摘要须包含：
-1. 本弧主要事件与因果链
-2. 人物关系/性格变化
-3. 已埋伏笔与未解决冲突
-4. 情感基调与节奏
-约 800 字，Markdown 格式，只输出摘要正文。`)
-
-	b.WriteString("\n\n章节材料:\n")
-	for num := start; num <= end; num++ {
-		content, err := ReadArtifact(wf, fmt.Sprintf("chapters/%s", ChapterFileName(num, width)))
-		if err != nil {
-			summary, _ := ReadArtifact(wf, fmt.Sprintf("chapters/%s", ChapterSummaryFileName(num, width)))
-			if summary != "" {
-				fmt.Fprintf(&b, "\n## 第%d章摘要\n%s\n", num, summary)
-			}
-			continue
-		}
-		fmt.Fprintf(&b, "\n## 第%d章\n%s\n", num, SummarizeChapter(content, 1200))
-	}
-	return b.String()
-}
-
 // LoadArcSummaries reads completed arc recap files before a chapter number.
 func LoadArcSummaries(wf *agentflowiov1alpha1.Workflow, beforeNum, width int) string {
 	if beforeNum <= 1 {

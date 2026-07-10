@@ -14,12 +14,12 @@ import (
 
 // TaskType constants (shared with flow package to avoid import cycles for now).
 const (
-	TaskTypeNovelOutline            = "novel-outline"
-	TaskTypeNovelOutlineRefine      = "novel-outline-refine"
-	TaskTypeNovelPlot               = "novel-plot"
-	TaskTypeNovelChapter            = "novel-chapter"
-	TaskTypeNovelChapterTeam        = "novel-chapter-team"
-	TaskTypeNovelOutlineSkeleton    = "novel-outline-skeleton"
+	TaskTypeNovelOutline         = "novel-outline"
+	TaskTypeNovelOutlineRefine   = "novel-outline-refine"
+	TaskTypeNovelPlot            = "novel-plot"
+	TaskTypeNovelChapter         = "novel-chapter"
+	TaskTypeNovelChapterTeam     = "novel-chapter-team"
+	TaskTypeNovelOutlineSkeleton = "novel-outline-skeleton"
 )
 
 // GetWorkerSystemPrompt returns the system prompt for the Worker role
@@ -99,25 +99,67 @@ func GetMonitorSystemPrompt(taskType string, threshold int, configPrompt string)
 
 评估维度（每项 0-20 分，总分 100）：
 - 完整性：是否写完整场景、对话、情绪闭环（目标字数意识）
-- 人物一致：姓名、性格、动机与大纲/前文一致
+- 人物一致性：姓名、性格、动机与大纲/前文一致
 - 剧情推进：有冲突/悬念/转折，不平铺直叙
 - 文风契合：与 style_bible / 之前章节语气统一
+- 衔接性：与前文自然衔接
 - 细节与沉浸：感官、动作、心理活动自然
 
 通过标准：score >= %d
 feedback 必须具体指出问题 + 如何修改（不要空泛表扬）。
 直接输出 JSON，不要任何额外文字。`, threshold)
 
-	case TaskTypeNovelOutline, TaskTypeNovelOutlineRefine:
-		return base + `
+	case TaskTypeNovelOutline:
+		return fmt.Sprintf(`你是小说策划编辑，审查大纲 JSON 产出质量。
 
-评估大纲质量：
-- 主线是否清晰完整
-- 人物弧光与冲突递进
-- 章节节奏是否合理
-- 设定一致性
+评分标准（总分 100）：
+- 结构 (30分)：必须含 title、synopsis、chapters 数组，JSON 可解析
+- 章节 (30分)：章节数量与要求一致，num 连续，每章有 title/summary
+- 故事性 (40分)：人物设定清晰，故事弧完整，章节梗概有冲突与衔接，主线贯穿全书
 
-直接输出 JSON。`
+通过阈值: %d 分
+
+仅返回 JSON：
+{"score": 分数, "passed": true/false, "feedback": "评价", "issues": ["问题"], "dimensions": {"completeness": 分, "accuracy": 分, "quality": 分}}`, threshold)
+
+	case TaskTypeNovelOutlineRefine:
+		return fmt.Sprintf(`你是小说策划编辑，审查大纲精修版质量（附加上下文含精修前初稿）。
+
+评分标准（总分 100）：
+- 结构 (30分)：必须含 title、synopsis、chapters 数组，JSON 可解析
+- 章节 (30分)：章节数量与初稿一致，num 连续，每章有 title/summary，不得删章改号
+- 改进度 (40分)：相比初稿，故事弧、人物设定、章节冲突与衔接是否明显改进
+
+通过阈值: %d 分
+
+仅返回 JSON：
+{"score": 分数, "passed": true/false, "feedback": "评价", "issues": ["问题"], "dimensions": {"completeness": 分, "accuracy": 分, "quality": 分}}`, threshold)
+
+	case TaskTypeNovelOutlineSkeleton:
+		return fmt.Sprintf(`你是小说策划编辑，审查长篇分卷骨架大纲质量。
+
+评分标准（总分 100）：
+- 结构 (30分)：含 title、synopsis、characters、volumes 数组，JSON 可解析
+- 覆盖 (40分)：volumes 无重叠无遗漏，startChapter/endChapter 连续覆盖全书章节
+- 故事性 (30分)：各卷主题递进，人物弧光清晰，末卷预留高潮与收束
+
+通过阈值: %d 分
+
+仅返回 JSON：
+{"score": 分数, "passed": true/false, "feedback": "评价", "issues": ["问题"], "dimensions": {"completeness": 分, "accuracy": 分, "quality": 分}}`, threshold)
+
+	case TaskTypeNovelPlot:
+		return fmt.Sprintf(`你是剧情编剧编辑，审查章节剧情脚本质量。
+
+评分标准（总分 100）：
+- 结构 (35分)：含多个场景节拍，冲突与转折清晰
+- 衔接 (35分)：与上一章衔接自然，落实本章梗概
+- 可执行性 (30分)：对话要点与情绪明确，便于扩写正文
+
+通过阈值: %d 分
+
+仅返回 JSON：
+{"score": 分数, "passed": true/false, "feedback": "评价", "issues": ["问题"], "dimensions": {"completeness": 分, "accuracy": 分, "quality": 分}}`, threshold)
 
 	default:
 		return base + "\n\n直接输出 JSON 评估结果。"
@@ -279,16 +321,64 @@ func BuildArcSummaryInstruction(prompt string, start, end, width int) string {
 
 // BuildSegmentInstruction builds prompt for one segment of a chapter.
 func BuildSegmentInstruction(baseInstruction string, segmentIndex, totalSegments, segmentWords int, priorTail, openingSample string) string {
-	return fmt.Sprintf(`%s
+	base := stripSegmentDirectiveBlock(baseInstruction) // note: may need to expose or duplicate helper if in other pkg
+	minSeg := segmentWords / 3                          // approx (400 -> ~133, test expects 120+)
 
-这是分段写作，第 %d/%d 段。
-本段目标字数约 %d 字。
-上一段结尾: %s
-本段应自然衔接上一段，并为下一段留悬念或过渡。
+	var role string
+	switch segmentIndex {
+	case 1:
+		role = fmt.Sprintf("第 1/%d 段（开篇）", totalSegments)
+	case totalSegments:
+		role = fmt.Sprintf("第 %d/%d 段（收束）", segmentIndex, totalSegments)
+	default:
+		role = fmt.Sprintf("第 %d/%d 段（承接推进）", segmentIndex, totalSegments)
+	}
 
-%s
+	var b strings.Builder
+	anchor := BuildConsistencyAnchor(baseInstruction)
+	if anchor != "" {
+		b.WriteString(anchor)
+		b.WriteString("\n\n")
+	}
+	b.WriteString(base)
+	b.WriteString("\n\n")
+	b.WriteString("【本段写作任务】\n")
+	fmt.Fprintf(&b, "请撰写本章%s，约 %d 字（正文不少于 %d 字）。\n", role, segmentWords, minSeg)
+	switch segmentIndex {
+	case 1:
+		b.WriteString("任务: 建立场景、人物状态与本章冲突起点；仅写本段，不要试图写完一整章。\n")
+	case totalSegments:
+		b.WriteString("任务: 紧接上文推进剧情，完成本章高潮或转折，并以完整句子收束，可留适度悬念。\n")
+	default:
+		b.WriteString("任务: 紧接上文继续推进情节，保持叙事节奏与人物口吻一致；仅写本段。\n")
+	}
+	if openingSample != "" && segmentIndex > 1 {
+		b.WriteString("\n本章开篇语调（后续各段须保持一致）:\n")
+		b.WriteString(openingSample)
+		b.WriteString("\n")
+	}
+	if priorTail != "" {
+		b.WriteString("\n上一段结尾（必须无缝衔接，不要重复已写内容）:\n")
+		b.WriteString(priorTail)
+		b.WriteString("\n")
+	}
+	anchor := BuildConsistencyAnchor(baseInstruction)
+	if anchor != "" {
+		b.WriteString("\n")
+		b.WriteString(anchor)
+		b.WriteString("\n")
+	}
+	b.WriteString("\n输出要求: 只输出本段中文小说正文；不要章节标题重复；不要写作说明、提纲或字数统计；语体须与本章已写部分一致。")
+	return b.String()
+}
 
-直接继续写本段正文。`, baseInstruction, segmentIndex, totalSegments, segmentWords, priorTail, openingSample)
+// helper duplicated to keep prompts self contained for segment (real strip is in workflow)
+func stripSegmentDirectiveBlock(instruction string) string {
+	idx := strings.Index(instruction, "【分段指令】")
+	if idx < 0 {
+		return instruction
+	}
+	return strings.TrimSpace(instruction[:idx])
 }
 
 // BuildRAGContextBlock returns a RAG context block to inject into prompts.
@@ -319,7 +409,7 @@ func BuildConsistencyMonitorContext(stepID string) string {
 
 // BuildConsistencyAnchor builds a short anchor for continuity.
 func BuildConsistencyAnchor(instruction string) string {
-	return fmt.Sprintf("前文关键信息摘要（用于保持一致性）：\n%s", instruction)
+	return "【一致性锚点 — 全章/全段必须遵守，不得偏离】\n" + strings.TrimSpace(instruction)
 }
 
 // Additional simple context builders can be added here.
@@ -508,6 +598,3 @@ func BuildChapterContextStrings(
 func BuildOutlineRefineMonitorContext() string {
 	return "工作区 outline-draft.json 为精修前初稿备份，outline.json 为待改进版本。请重点检查主线完整性、人物一致性和节奏。"
 }
-
-
-

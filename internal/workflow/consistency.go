@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	agentflowiov1alpha1 "agent-flow/api/v1alpha1"
-	"agent-flow/internal/prompts"
 )
 
 // BuildConsistencyMonitorContext assembles cross-chapter reference material for Monitor.
@@ -64,7 +63,7 @@ func BuildConsistencyMonitorContext(wf *agentflowiov1alpha1.Workflow, stepID str
 
 	words := IntParam(wf.Spec.Params, "wordsPerChapter", 3000)
 	fmt.Fprintf(&b, "\n目标字数约: %d\n", words)
-	return prompts.BuildConsistencyMonitorContext(stepID)
+	return b.String()
 }
 
 // MinChapterLength estimates minimum acceptable chapter length in runes.
