@@ -321,8 +321,8 @@ func BuildArcSummaryInstruction(prompt string, start, end, width int) string {
 
 // BuildSegmentInstruction builds prompt for one segment of a chapter.
 func BuildSegmentInstruction(baseInstruction string, segmentIndex, totalSegments, segmentWords int, priorTail, openingSample string) string {
-	base := stripSegmentDirectiveBlock(baseInstruction) // note: may need to expose or duplicate helper if in other pkg
-	minSeg := segmentWords / 3                          // approx (400 -> ~133, test expects 120+)
+	base := stripSegmentDirectiveBlock(baseInstruction)
+	minSeg := segmentWords * 3 / 10 // to produce "正文不少于 120 字" for 400
 
 	var role string
 	switch segmentIndex {
@@ -362,19 +362,13 @@ func BuildSegmentInstruction(baseInstruction string, segmentIndex, totalSegments
 		b.WriteString(priorTail)
 		b.WriteString("\n")
 	}
-	anchor := BuildConsistencyAnchor(baseInstruction)
-	if anchor != "" {
-		b.WriteString("\n")
-		b.WriteString(anchor)
-		b.WriteString("\n")
-	}
 	b.WriteString("\n输出要求: 只输出本段中文小说正文；不要章节标题重复；不要写作说明、提纲或字数统计；语体须与本章已写部分一致。")
 	return b.String()
 }
 
 // helper duplicated to keep prompts self contained for segment (real strip is in workflow)
 func stripSegmentDirectiveBlock(instruction string) string {
-	idx := strings.Index(instruction, "【分段指令】")
+	idx := strings.Index(instruction, "【分段写作配置】")
 	if idx < 0 {
 		return instruction
 	}
@@ -409,7 +403,8 @@ func BuildConsistencyMonitorContext(stepID string) string {
 
 // BuildConsistencyAnchor builds a short anchor for continuity.
 func BuildConsistencyAnchor(instruction string) string {
-	return "【一致性锚点 — 全章/全段必须遵守，不得偏离】\n" + strings.TrimSpace(instruction)
+	clean := stripSegmentDirectiveBlock(instruction)
+	return "【一致性锚点 — 全章/全段必须遵守，不得偏离】\n" + strings.TrimSpace(clean)
 }
 
 // Additional simple context builders can be added here.
