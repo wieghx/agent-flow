@@ -1,3 +1,4 @@
+// Package config provides configuration structures and helpers for AI services.
 package config
 
 import (
@@ -479,12 +480,12 @@ func (c *AIConfig) ToJSON() (string, error) {
 	return string(data), nil
 }
 
-// GetTimeout 获取超时时间
+// GetTimeout returns the configured timeout duration.
 func (r *RemoteConfig) GetTimeout() time.Duration {
 	return time.Duration(r.TimeoutSeconds) * time.Second
 }
 
-// GetLocalTimeout 获取本地超时时间
+// GetTimeout returns the configured timeout duration.
 func (l *LocalConfig) GetTimeout() time.Duration {
 	return time.Duration(l.TimeoutSeconds) * time.Second
 }

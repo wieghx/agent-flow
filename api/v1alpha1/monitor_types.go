@@ -1,3 +1,4 @@
+// Package v1alpha1 contains API Schema definitions for the agentflow.io v1alpha1 API group.
 // +kubebuilder:object:generate=true
 // +groupName=agentflow.io
 package v1alpha1
@@ -6,8 +7,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// MonitorSpec defines the desired state of Monitor.
 // +k8s:deepcopy-gen=true
-// MonitorSpec defines the desired state of Monitor
 type MonitorSpec struct {
 	// Namespace is the namespace to monitor (empty means all namespaces)
 	Namespace string `json:"namespace,omitempty"`
@@ -28,8 +29,8 @@ type MonitorSpec struct {
 	Actions []MonitorAction `json:"actions,omitempty"`
 }
 
+// MonitorAction defines an action to take on certain conditions.
 // +k8s:deepcopy-gen=true
-// MonitorAction defines an action to take on certain conditions
 type MonitorAction struct {
 	// Condition is the condition that triggers this action
 	Condition MonitorCondition `json:"condition"`
@@ -62,8 +63,8 @@ const (
 	ActionTypeEscalate ActionType = "Escalate"
 )
 
+// MonitorStatus defines the observed state of Monitor.
 // +k8s:deepcopy-gen=true
-// MonitorStatus defines the observed state of Monitor
 type MonitorStatus struct {
 	// Phase is the current state of the monitor
 	Phase MonitorPhase `json:"phase"`
@@ -108,8 +109,8 @@ type TaskPhaseCounts struct {
 	Cancelled int32 `json:"cancelled,omitempty"`
 }
 
+// Alert represents a generated alert.
 // +k8s:deepcopy-gen=true
-// Alert represents a generated alert
 type Alert struct {
 	// Time is when the alert was generated
 	Time metav1.Time `json:"time"`

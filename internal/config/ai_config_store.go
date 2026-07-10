@@ -166,8 +166,8 @@ func roleRemoteToConfig(in AIRemoteSettings, current RemoteConfig) RemoteConfig 
 		TimeoutSeconds: in.TimeoutSeconds,
 	}
 	apiKey := strings.TrimSpace(in.APIKey)
-	switch {
-	case apiKey == "" || apiKey == apiKeyUnchangedSentinel:
+	switch apiKey {
+	case "", apiKeyUnchangedSentinel:
 		out.APIKey = current.APIKey
 	default:
 		out.APIKey = apiKey

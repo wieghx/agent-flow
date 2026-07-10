@@ -1,3 +1,4 @@
+// Package api implements the HTTP API handlers for the agent flow service.
 package api
 
 import (

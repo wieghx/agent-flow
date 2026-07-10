@@ -21,7 +21,7 @@ linters:
       check-type-assertions: false
       check-blank: false
     staticcheck:
-      checks: ["all", "-SA1019"]  # allow some deprecated for now (k8s compat)
+      checks: ["all", "-SA1019", "-ST1000", "-ST1020", "-ST1021"]  # style comment checks are noisy on this codebase; keep core static analysis
   exclusions:
     rules:
       - path: .*_test\.go$
