@@ -7,7 +7,7 @@ const PORT = Number(process.env.PORT || 3000);
 const WEB_ROOT = __dirname;
 const DIST_ROOT = path.join(WEB_ROOT, 'dist');
 
-const API_PREFIXES = ['/chat', '/tasks', '/conversation', '/outputs', '/workflows', '/novels', '/observability'];
+const API_PREFIXES = ['/chat', '/tasks', '/conversation', '/outputs', '/workflows', '/novels', '/observability', '/settings'];
 
 const MIME = {
   '.html': 'text/html',

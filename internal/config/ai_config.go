@@ -34,18 +34,20 @@ type GlobalConfig struct {
 
 // PlannerConfig 架构配置
 type PlannerConfig struct {
-	Description string       `yaml:"description"`
-	Mode        string       `yaml:"mode"`
-	Remote      RemoteConfig `yaml:"remote"`
-	Local       LocalConfig  `yaml:"local"`
+	Description  string       `yaml:"description"`
+	Mode         string       `yaml:"mode"`
+	SystemPrompt string       `yaml:"system_prompt"`
+	Remote       RemoteConfig `yaml:"remote"`
+	Local        LocalConfig  `yaml:"local"`
 }
 
 // WorkerConfig 执行者配置
 type WorkerConfig struct {
-	Description string       `yaml:"description"`
-	Mode        string       `yaml:"mode"`
-	Remote      RemoteConfig `yaml:"remote"`
-	Local       LocalConfig  `yaml:"local"`
+	Description  string       `yaml:"description"`
+	Mode         string       `yaml:"mode"`
+	SystemPrompt string       `yaml:"system_prompt"`
+	Remote       RemoteConfig `yaml:"remote"`
+	Local        LocalConfig  `yaml:"local"`
 }
 
 // MonitorConfig 监工配置
@@ -188,6 +190,9 @@ func mergePlannerConfig(base, overlay *PlannerConfig) {
 	if overlay.Mode != "" {
 		base.Mode = overlay.Mode
 	}
+	if overlay.SystemPrompt != "" {
+		base.SystemPrompt = overlay.SystemPrompt
+	}
 	mergeRemoteConfig(&base.Remote, &overlay.Remote)
 	mergeLocalConfig(&base.Local, &overlay.Local)
 }
@@ -198,6 +203,9 @@ func mergeWorkerConfig(base, overlay *WorkerConfig) {
 	}
 	if overlay.Mode != "" {
 		base.Mode = overlay.Mode
+	}
+	if overlay.SystemPrompt != "" {
+		base.SystemPrompt = overlay.SystemPrompt
 	}
 	mergeRemoteConfig(&base.Remote, &overlay.Remote)
 	mergeLocalConfig(&base.Local, &overlay.Local)

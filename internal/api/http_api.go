@@ -10,6 +10,7 @@ import (
 	"time"
 
 	agentflowiov1alpha1 "agent-flow/api/v1alpha1"
+	"agent-flow/internal/ai"
 	"agent-flow/internal/flow"
 	applog "agent-flow/internal/log"
 	"agent-flow/internal/store"
@@ -24,19 +25,23 @@ import (
 
 // API 聊天 API 服务器
 type API struct {
-	router     *flow.ChatRouter
-	mux        *http.ServeMux
-	client     client.Client
-	novelStore store.Store
+	router       *flow.ChatRouter
+	mux          *http.ServeMux
+	client       client.Client
+	novelStore   store.Store
+	aiService    *ai.Service
+	aiConfigPath string
 }
 
 // NewAPI 创建新的 API 服务器
-func NewAPI(router *flow.ChatRouter, k8sClient client.Client, novelStore store.Store) *API {
+func NewAPI(router *flow.ChatRouter, k8sClient client.Client, novelStore store.Store, aiService *ai.Service, aiConfigPath string) *API {
 	api := &API{
-		router:     router,
-		mux:        http.NewServeMux(),
-		client:     k8sClient,
-		novelStore: novelStore,
+		router:       router,
+		mux:          http.NewServeMux(),
+		client:       k8sClient,
+		novelStore:   novelStore,
+		aiService:    aiService,
+		aiConfigPath: aiConfigPath,
 	}
 	api.setupRoutes()
 	return api
@@ -85,6 +90,7 @@ func (a *API) setupRoutes() {
 	a.mux.HandleFunc("/novels", a.handleNovelList)
 	a.mux.HandleFunc("/outputs/", a.handleOutputFile)
 	a.mux.HandleFunc("/observability", a.handleObservability)
+	a.mux.HandleFunc("/settings/ai", a.handleAISettings)
 }
 
 // ServeHTTP 实现 http.Handler 接口 - 使用 corsHandler 包装整个 mux
@@ -927,6 +933,8 @@ func (a *API) StartServer(port int) error {
 			"GET /workflows/pending",
 			"POST /workflows/approve",
 			"POST /workflows/reject",
+			"GET /settings/ai",
+			"PUT /settings/ai",
 		},
 	)
 	return http.ListenAndServe(addr, a)

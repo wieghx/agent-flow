@@ -18,6 +18,7 @@ const NAV = [
   { to: '/tokens', label: 'Token 报表', icon: '🪙', title: 'Token 用量汇总' },
   { to: '/novel', label: '小说阅读', icon: '📖', title: '小说阅读' },
   { to: '/monitor', label: '监控面板', icon: '📊', title: '监控面板' },
+  { to: '/settings', label: '设置', icon: '⚙️', title: 'AI 配置' },
 ];
 
 export function Layout() {

@@ -159,7 +159,7 @@ func main() {
 	setupLog.Info("Controller manager started successfully, starting to listen for tasks")
 
 	// Create API server
-	chatAPI := api.NewAPI(chatRouter, mgr.GetClient(), novelStore)
+	chatAPI := api.NewAPI(chatRouter, mgr.GetClient(), novelStore, aiService, aiConfigPath)
 
 	// Start chat API server (in background goroutine)
 	go func() {

@@ -8,6 +8,7 @@ import { MonitorPage } from '@/pages/MonitorPage';
 import { NovelReaderPage } from '@/pages/NovelReaderPage';
 import { NovelLibraryPage } from '@/pages/NovelLibraryPage';
 import { TokenReportPage } from '@/pages/TokenReportPage';
+import { SettingsPage } from '@/pages/SettingsPage';
 
 export function App() {
   return (
@@ -21,6 +22,7 @@ export function App() {
           <Route path="/library" element={<NovelLibraryPage />} />
           <Route path="/tokens" element={<TokenReportPage />} />
           <Route path="/monitor" element={<MonitorPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route path="/novel" element={<NovelReaderPage />} />
           <Route path="/novel/:namespace/:name" element={<NovelReaderPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />

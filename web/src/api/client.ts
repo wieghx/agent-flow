@@ -15,6 +15,8 @@ import type {
   TaskSummary,
   ObservabilityReport,
   TokenReport,
+  AISettingsUpdate,
+  AISettingsView,
   WorkflowDetail,
   WorkflowSummary,
 } from '@/types/api';
@@ -208,6 +210,18 @@ export async function deleteTask(name: string): Promise<void> {
   const res = await fetch(`/tasks/${encodeURIComponent(name)}`, { method: 'DELETE' });
   const data = (await res.json()) as ApiResponse;
   if (!data.success) throw new Error(data.error || 'Delete failed');
+}
+
+export async function fetchAISettings(): Promise<AISettingsView> {
+  return request<AISettingsView>('/settings/ai');
+}
+
+export async function saveAISettings(payload: AISettingsUpdate): Promise<AISettingsView> {
+  return request<AISettingsView>('/settings/ai', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function fetchTextAsset(url: string): Promise<string> {

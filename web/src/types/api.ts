@@ -297,3 +297,63 @@ export interface ChatResponseData {
 }
 
 export type PhaseFilter = 'all' | 'Pending' | 'Running' | 'Succeeded' | 'Failed';
+
+export interface AIRemoteSettings {
+  enabled: boolean;
+  base_url: string;
+  api_key?: string;
+  api_key_set?: boolean;
+  model: string;
+  temperature: number;
+  max_tokens: number;
+  timeout_seconds: number;
+}
+
+export interface AILocalSettings {
+  enabled: boolean;
+  base_url: string;
+  model: string;
+  temperature: number;
+  top_p: number;
+  max_tokens: number;
+  timeout_seconds: number;
+}
+
+export interface RoleAISettings {
+  mode: 'remote' | 'local' | string;
+  description?: string;
+  system_prompt?: string;
+  remote: AIRemoteSettings;
+  local: AILocalSettings;
+}
+
+export interface AIQualitySettings {
+  threshold: number;
+  max_retries: number;
+}
+
+export interface AIRetrySettings {
+  max_retries: number;
+  base_delay_seconds: number;
+  max_delay_seconds: number;
+}
+
+export interface AISettingsView {
+  config_path: string;
+  local_path: string;
+  planner: RoleAISettings;
+  worker: RoleAISettings;
+  monitor: RoleAISettings;
+  quality: AIQualitySettings;
+  retry: AIRetrySettings;
+}
+
+export interface AISettingsUpdate {
+  planner: RoleAISettings;
+  worker: RoleAISettings;
+  monitor: RoleAISettings;
+  quality: AIQualitySettings;
+  retry: AIRetrySettings;
+}
+
+export type AISettingsRole = 'planner' | 'worker' | 'monitor';

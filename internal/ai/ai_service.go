@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"agent-flow/internal/config"
@@ -28,6 +29,15 @@ func NewService(cfg *config.AIConfig) *Service {
 	return &Service{
 		config: cfg,
 	}
+}
+
+// Reload replaces the in-memory config and re-initializes role clients.
+func (s *Service) Reload(cfg *config.AIConfig) error {
+	if cfg == nil {
+		return fmt.Errorf("config is nil")
+	}
+	s.config = cfg
+	return s.Init()
 }
 
 // Init 初始化所有角色服务
