@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	agentflowiov1alpha1 "agent-flow/api/v1alpha1"
+	"agent-flow/internal/prompts"
 )
 
 const defaultVolumeSize = 25
@@ -190,33 +191,27 @@ func OutlineReady(wf *agentflowiov1alpha1.Workflow) bool {
 
 // BuildVolumeOutlineInstruction renders prompt for one volume's detailed outline.
 func BuildVolumeOutlineInstruction(prompt string, skeleton *NovelSkeleton, vol VolumeMeta, prevVolumeSummary string) string {
-	var b strings.Builder
-	b.WriteString(prompt)
-	b.WriteString("\n\n")
-	fmt.Fprintf(&b, "书名: %s\n全书简介: %s\n", skeleton.Title, skeleton.Synopsis)
-	if chars := FormatCharacters(&NovelOutline{Characters: skeleton.Characters}); chars != "" {
-		b.WriteString("\n主要人物:\n")
-		b.WriteString(chars)
-		b.WriteString("\n")
+	chars := ""
+	if skeleton != nil {
+		chars = FormatCharacters(&NovelOutline{Characters: skeleton.Characters})
 	}
-	fmt.Fprintf(&b, "\n当前分卷: 第%d卷《%s》\n", vol.Num, vol.Title)
-	fmt.Fprintf(&b, "章节范围: 第%d章 到 第%d章\n", vol.StartChapter, vol.EndChapter)
-	fmt.Fprintf(&b, "本卷主题: %s\n", vol.Theme)
-	fmt.Fprintf(&b, "本卷概要: %s\n", vol.Summary)
-	if prevVolumeSummary != "" {
-		b.WriteString("\n上一卷章节梗概（保持衔接）:\n")
-		b.WriteString(prevVolumeSummary)
-		b.WriteString("\n")
+	title := ""
+	syn := ""
+	if skeleton != nil {
+		title = skeleton.Title
+		syn = skeleton.Synopsis
 	}
-	b.WriteString(`
-请输出本卷详细章节大纲，严格 JSON（不要 markdown 代码块）：
-{
-  "volume": 1,
-  "chapters": [{"num":1,"title":"章节标题","summary":"章节梗概"}]
-}
-要求：
-1. chapters 必须覆盖本卷全部章节，num 连续
-2. 每章 summary 写清冲突、转折及与前后章衔接
-3. 人物动机与世界观与前文一致`)
-	return b.String()
+	return prompts.BuildVolumeOutlineInstruction(
+		prompt,
+		title,
+		syn,
+		chars,
+		vol.Num,
+		vol.Title,
+		vol.StartChapter,
+		vol.EndChapter,
+		vol.Theme,
+		vol.Summary,
+		prevVolumeSummary,
+	)
 }

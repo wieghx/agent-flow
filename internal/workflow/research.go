@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	agentflowiov1alpha1 "agent-flow/api/v1alpha1"
+	"agent-flow/internal/prompts"
 )
 
 const ResearchArtifact = "research_notes.md"
@@ -61,30 +62,7 @@ func extractEraHint(prompt string) string {
 func BuildHistoricalResearchInstruction(wf *agentflowiov1alpha1.Workflow) string {
 	ws := WorkspacePath(wf)
 	era := HistoricalEraFromParams(wf.Spec.Params, wf.Spec.Prompt)
-	eraLine := ""
-	if era != "" {
-		eraLine = fmt.Sprintf("时代背景锚点: %s\n", era)
-	}
-	return fmt.Sprintf(`%s
-
-你是历史小说调研编辑。必须使用 MCP 工具联网检索，整理可写入小说的史实与民俗资料。
-
-工作区: %s
-输出文件: %s/%s
-
-调研清单（用 historical_research、web_search、wikipedia_search、web_fetch）:
-1. 时代与地理：朝代纪年、都城/地域风貌、社会制度
-2. 真实人物：身份、关系、可查证的言行典故（标注姓名与称谓）
-3. 民俗日常：服饰、饮食、居所、交通、节庆、称谓礼仪
-4. 小说边界：哪些可虚构，哪些不得明显违背史料
-
-执行建议:
-- 先调用 historical_research（era/location/topics/figures）
-- 对关键条目用 web_fetch 补充 1-2 个权威来源
-- 用 file_write 将完整 Markdown 写入 %s/%s
-- FinalAnswer 输出与文件相同的 Markdown 正文
-
-%s`, wf.Spec.Prompt, ws, ws, ResearchArtifact, ws, ResearchArtifact, eraLine)
+	return prompts.BuildHistoricalResearchInstruction(wf.Spec.Prompt, era, ws, ws)
 }
 
 // ResearchContextBlock returns instruction appendix when research_notes.md exists.

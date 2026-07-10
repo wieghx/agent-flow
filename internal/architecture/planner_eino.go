@@ -366,7 +366,13 @@ func (p *TaskPlannerEino) runWorkerMonitorLoop(ctx context.Context, task *agentf
 		})
 
 		// 创建 eino 流程：Worker -> [Polish] -> Monitor
-		f := flow.NewAgentFlow()
+		// Use debug flow when AGENTFLOW_DEBUG_EINO=true for better visibility
+		var f *flow.AgentFlow
+		if os.Getenv("AGENTFLOW_DEBUG_EINO") == "true" {
+			f = flow.NewAgentFlowWithDebug()
+		} else {
+			f = flow.NewAgentFlow()
+		}
 		f.AddNode(&flow.WorkerNode{Name: "worker"})
 		if p.isChapterPolishTask(task) {
 			f.AddNode(&flow.PolishNode{Name: "polish"})
@@ -374,6 +380,9 @@ func (p *TaskPlannerEino) runWorkerMonitorLoop(ctx context.Context, task *agentf
 		f.AddNode(&flow.MonitorNode{Name: "monitor"})
 		if err := f.Compile(); err != nil {
 			return "", fmt.Errorf("编译 eino 流程失败：%w", err)
+		}
+		if os.Getenv("AGENTFLOW_DEBUG_EINO") == "true" {
+			logger.Info("eino flow graph", "description", f.Describe())
 		}
 
 		// 初始化状态

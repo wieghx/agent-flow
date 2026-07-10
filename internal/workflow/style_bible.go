@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	agentflowiov1alpha1 "agent-flow/api/v1alpha1"
+	"agent-flow/internal/prompts"
 )
 
 const StyleBibleArtifact = "style_bible.json"
@@ -26,38 +27,17 @@ type StyleBible struct {
 
 // BuildStyleBibleInstruction renders the设定官 worker prompt from outline.
 func BuildStyleBibleInstruction(prompt string, outline *NovelOutline) string {
-	var b strings.Builder
-	b.WriteString(prompt)
-	b.WriteString(`
-
-你是小说设定官（Canon Keeper）。请根据下方大纲生成「设定圣经」JSON，作为全书写作的唯一约束（不要 markdown 代码块）：
-{
-  "title": "书名",
-  "pov": "叙事人称（如：第三人称限知，紧跟主角）",
-  "tone": "整体基调（如：冷峻写实、悬疑压迫）",
-  "prose_style": "文笔规范（句式、修辞、禁用风格）",
-  "protagonists": ["主角姓名，必须与大纲一致"],
-  "supporting_cast": ["重要配角姓名"],
-  "forbidden": ["严禁事项：换主角名、元评论、网络梗、提纲句等"],
-  "timeline_anchor": "时代/地点/时间线锚点",
-  "opening_hook_style": "章节开篇惯例",
-  "chapter_rhythm": "章节节奏（场景-对话-心理比例）"
-}
-要求：
-1. protagonists 必须来自大纲 characters，不得自创新主角
-2. forbidden 须明确「不得更换主角姓名」「不得引入未登记主要角色」
-3. 直接以 { 开头、以 } 结尾`)
+	chars := ""
 	if outline != nil {
-		b.WriteString("\n\n【已生成大纲】\n")
-		fmt.Fprintf(&b, "书名: %s\n", outline.Title)
-		fmt.Fprintf(&b, "简介: %s\n", outline.Synopsis)
-		if chars := FormatCharacters(outline); chars != "" {
-			b.WriteString("\n人物:\n")
-			b.WriteString(chars)
-			b.WriteString("\n")
-		}
+		chars = FormatCharacters(outline)
 	}
-	return b.String()
+	title := ""
+	syn := ""
+	if outline != nil {
+		title = outline.Title
+		syn = outline.Synopsis
+	}
+	return prompts.BuildStyleBibleInstruction(prompt, title, syn, chars)
 }
 
 // ParseStyleBibleJSON parses and validates style bible output.

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	agentflowiov1alpha1 "agent-flow/api/v1alpha1"
+	"agent-flow/internal/prompts"
 	"agent-flow/internal/rag"
 )
 
@@ -22,16 +23,15 @@ func BuildRAGContextBlock(wf *agentflowiov1alpha1.Workflow, title, query string)
 	if err != nil || len(chunks) == 0 {
 		return ""
 	}
-	var b strings.Builder
-	b.WriteString("【RAG 参考片段】（可借鉴设定与情节，不得照搬整段）\n")
-	for i, ch := range chunks {
+	var texts []string
+	for _, ch := range chunks {
 		text := ch.Text
 		if len([]rune(text)) > 600 {
 			text = string([]rune(text)[:600]) + "…"
 		}
-		fmt.Fprintf(&b, "%d) [%s] %s\n", i+1, ch.Source, text)
+		texts = append(texts, fmt.Sprintf("[%s] %s", ch.Source, text))
 	}
-	return b.String()
+	return prompts.BuildRAGContextBlock(title, strings.TrimSpace(title+" "+query), texts)
 }
 
 // RAGEnabled is a thin wrapper for workflow params.

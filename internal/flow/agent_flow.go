@@ -9,6 +9,7 @@ import (
 
 	agentflowiov1alpha1 "agent-flow/api/v1alpha1"
 	"agent-flow/internal/ai"
+	"agent-flow/internal/prompts"
 	sandboxv1beta1 "sigs.k8s.io/agent-sandbox/api/v1beta1"
 
 	corev1 "k8s.io/api/core/v1"
@@ -70,6 +71,8 @@ type AgentFlow struct {
 	chain *compose.Chain[State, State]
 	// 缓存的编译结果
 	compiledRunnable compose.Runnable[State, State]
+	// debug enables verbose per-node logging and graph printing
+	debug bool
 }
 
 // NewAgentFlow 创建新的 eino 流程
@@ -79,17 +82,61 @@ func NewAgentFlow() *AgentFlow {
 	}
 }
 
+// NewAgentFlowWithDebug creates a flow with extra logging for debugging.
+func NewAgentFlowWithDebug() *AgentFlow {
+	f := NewAgentFlow()
+	f.debug = true
+	return f
+}
+
 // AddNode 添加节点到流程
 func (f *AgentFlow) AddNode(node Node) *AgentFlow {
 	// 将自定义 Node 转换为 eino 的 Lambda 节点
-	lambda := compose.InvokableLambda(node.Run)
+	// Wrap with debug logging when enabled
+	lambda := compose.InvokableLambda(func(ctx context.Context, in State) (State, error) {
+		logger := log.FromContext(ctx).WithName("eino-flow").WithValues("node", nodeName(node))
+		if f.debug {
+			logger.Info("node enter", "phase", in.Phase, "retry", in.RetryCount)
+		}
+		out, err := node.Run(ctx, in)
+		if f.debug {
+			if err != nil {
+				logger.Error(err, "node error")
+			} else {
+				logger.Info("node exit", "phase", out.Phase, "output_len", len(out.WorkerOutput), "feedback_len", len(out.MonitorFeedback))
+			}
+		}
+		return out, err
+	})
 	f.chain.AppendLambda(lambda)
 	return f
+}
+
+func nodeName(n Node) string {
+	switch x := n.(type) {
+	case *WorkerNode:
+		return "worker"
+	case *MonitorNode:
+		return "monitor"
+	case *PolishNode:
+		return "polish"
+	default:
+		if named, ok := n.(interface{ GetName() string }); ok {
+			return named.GetName()
+		}
+		return fmt.Sprintf("%T", x)
+	}
 }
 
 // Build 构建流程（返回自身）
 func (f *AgentFlow) Build() *AgentFlow {
 	return f
+}
+
+// Describe returns a human-readable description of the current flow graph (for debugging).
+func (f *AgentFlow) Describe() string {
+	// eino v0.9 does not expose rich graph inspection easily; we keep a simple record.
+	return "AgentFlow: chain of custom Nodes (Worker/Polish/Monitor etc.)"
 }
 
 // Compile 编译流程为可执行的 Runnable
@@ -100,6 +147,9 @@ func (f *AgentFlow) Compile() error {
 		return err
 	}
 	f.compiledRunnable = runnable
+	if f.debug {
+		log.FromContext(ctx).Info("eino flow compiled", "graph", f.Describe())
+	}
 	return nil
 }
 
@@ -109,9 +159,17 @@ func (f *AgentFlow) Execute(ctx context.Context, input State) (*State, error) {
 		return nil, ErrFlowNotCompiled
 	}
 
+	if f.debug {
+		log.FromContext(ctx).WithName("eino-flow").Info("flow start", "initial_phase", input.Phase)
+	}
+
 	output, err := f.compiledRunnable.Invoke(ctx, input)
 	if err != nil {
 		return nil, err
+	}
+
+	if f.debug {
+		log.FromContext(ctx).WithName("eino-flow").Info("flow done", "final_phase", output.Phase)
 	}
 
 	return &output, nil
@@ -275,63 +333,13 @@ func pvcChapterOutputTooShort(input State, content string) bool {
 	return len([]rune(ExtractChineseProse(content))) < MinChapterRunes(target)/2
 }
 
+// buildWorkerSystemPrompt is a thin wrapper kept for backward compat.
 func buildWorkerSystemPrompt(instruction string) string {
-	return buildWorkerSystemPromptFor(instruction, "")
+	return prompts.GetWorkerSystemPrompt(instruction, "")
 }
 
 func buildWorkerSystemPromptFor(instruction, monitorTaskType string) string {
-	taskType := monitorTaskType
-	if taskType == "" {
-		taskType = DetectTaskType(instruction)
-	}
-	switch taskType {
-	case TaskTypeNovelOutline:
-		return `你是小说策划编辑。根据指令生成小说大纲，严格只输出一个 JSON 对象。
-要求：
-1. 不要输出思考过程、分析、英文备注或 markdown 代码块
-2. JSON 必须含 title、synopsis、characters、chapters 字段且可被解析
-3. chapters 数组每项含 num、title、summary，num 从 1 连续递增
-4. 直接以 { 开头、以 } 结尾`
-	case TaskTypeNovelOutlineRefine:
-		return `你是资深小说策划编辑。根据指令对现有大纲进行精修，严格只输出一个 JSON 对象。
-要求：
-1. 不要输出思考过程、分析、英文备注或 markdown 代码块
-2. 读取 outline.json 改进，保留好的部分；outline-draft.json 为初稿备份仅供对照
-3. JSON 必须含 title、synopsis、characters、chapters 字段且可被解析
-4. 重点改进：主线完整性、冲突递进、人物弧光、节奏收束、伏笔回收；不得删减或合并章节
-5. 直接以 { 开头、以 } 结尾`
-	case TaskTypeNovelPlot:
-		return `你是小说剧情编剧。根据梗概扩写剧情脚本，只输出剧情脚本文本。
-要求：
-1. 不要输出思考过程或 markdown 代码块
-2. 包含场景节拍、冲突、对话要点、衔接与悬念
-3. 不要写成完整散文正文`
-	case TaskTypeNovelOutlineSkeleton:
-		return `你是小说策划编辑。根据指令生成长篇分卷骨架，严格只输出一个 JSON 对象。
-要求：
-1. 不要输出思考过程、分析、英文备注或 markdown 代码块
-2. JSON 必须含 title、synopsis、characters、volumes 字段且可被解析
-3. volumes 每项含 num、title、startChapter、endChapter、theme、summary，章节范围连续无遗漏
-4. 直接以 { 开头、以 } 结尾`
-	case TaskTypeNovelChapter:
-		target := ParseTargetWordsFromInstruction(instruction)
-		minRunes := MinChapterRunes(target)
-		lengthHint := ""
-		if target > 0 {
-			lengthHint = fmt.Sprintf("5. 本章正文不少于 %d 字（目标约 %d 字），写完整场景与对话，不要草草收尾\n6. 必须以句号、问号或感叹号等完整收束，不要中途截断", minRunes, target)
-		} else {
-			lengthHint = "5. 正文需充实完整，以完整句子收束，不要中途截断"
-		}
-		return fmt.Sprintf(`你是小说作者。根据大纲与上下文撰写本章正文。
-要求：
-1. 不要输出思考过程或写作说明
-2. 直接输出中文小说正文，自然衔接上一章
-3. 人物、时间线、伏笔与设定保持一致；严禁更换主角姓名或引入未在大纲登记的主要角色
-4. 全章保持统一叙事人称、语体与节奏；若分多段撰写，段与段须无缝衔接，不得像拼凑的独立片段
-%s`, lengthHint)
-	default:
-		return "你是一个专业的任务执行者。根据给定的指令执行任务，生成高质量、完整的产出物。要求：\n1. 内容丰富、有深度\n2. 格式规范、排版清晰\n3. 直接输出最终结果，不要输出过程说明"
-	}
+	return prompts.GetWorkerSystemPrompt(instruction, monitorTaskType)
 }
 
 // WorkerNode 是 AI 执行节点（执行者）

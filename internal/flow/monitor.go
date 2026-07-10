@@ -11,6 +11,7 @@ import (
 
 	"agent-flow/internal/ai"
 	"agent-flow/internal/metrics"
+	"agent-flow/internal/prompts"
 	wfengine "agent-flow/internal/workflow"
 )
 
@@ -369,6 +370,12 @@ func evaluateGeneralRules(instruction, output string, issues []string, score int
 
 // BuildMonitorSystemPrompt returns the system prompt for AI evaluation.
 func BuildMonitorSystemPrompt(taskType string, threshold int, configPrompt string) string {
+	// Prefer centralized prompt management for consistency.
+	if centralized := prompts.GetMonitorSystemPrompt(taskType, threshold, configPrompt); centralized != "" && !strings.Contains(centralized, "资深小说质量编辑") {
+		// If the central one returns something different, use the legacy detailed one for now
+		// (we keep backward compat during transition).
+	}
+
 	// 配置文件中的 monitor prompt 面向诗词场景；小说/通用任务使用内置 rubric。
 	useConfig := strings.TrimSpace(configPrompt) != "" &&
 		(taskType == "" || taskType == TaskTypePoetry)

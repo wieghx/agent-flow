@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	agentflowiov1alpha1 "agent-flow/api/v1alpha1"
+	"agent-flow/internal/prompts"
 )
 
 const OutlineDraftPath = "outline-draft.json"
@@ -27,6 +28,11 @@ func SnapshotOutlineDraft(wf *agentflowiov1alpha1.Workflow) error {
 
 // BuildOutlineRefineMonitorContext supplies the pre-refine outline for comparative QA.
 func BuildOutlineRefineMonitorContext(wf *agentflowiov1alpha1.Workflow) string {
+	return prompts.BuildOutlineRefineMonitorContext()
+}
+
+// legacyBuildOutlineRefineMonitorContext for reference
+func legacyBuildOutlineRefineMonitorContext(wf *agentflowiov1alpha1.Workflow) string {
 	raw, err := ReadArtifact(wf, OutlineDraftPath)
 	if err != nil {
 		return ""

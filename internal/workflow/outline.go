@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	agentflowiov1alpha1 "agent-flow/api/v1alpha1"
+	"agent-flow/internal/prompts"
 )
 
 // ChapterOutline is one chapter entry in outline.json.
@@ -113,59 +114,33 @@ func ChapterEnding(content string, maxLen int) string {
 
 // BuildChapterInstruction renders a foreach chapter prompt.
 func BuildChapterInstruction(wf *agentflowiov1alpha1.Workflow, base string, outline *NovelOutline, chapter ChapterOutline, context ContextBundle, wordsPerChapter int, bible *StyleBible, width int) string {
-	var b strings.Builder
-	if block := FormatStyleBibleBlock(bible); block != "" {
-		b.WriteString(block)
-		b.WriteString("\n\n")
-	}
-	b.WriteString(base)
-	b.WriteString("\n\n")
-	fmt.Fprintf(&b, "书名: %s\n", outline.Title)
-	fmt.Fprintf(&b, "全书简介: %s\n", outline.Synopsis)
-	if chars := FormatCharacters(outline); chars != "" {
-		b.WriteString("\n主要人物（必须保持一致）:\n")
-		b.WriteString(chars)
-		b.WriteString("\n")
-	}
-	fmt.Fprintf(&b, "\n当前章节: 第%d章《%s》\n", chapter.Num, chapter.Title)
-	fmt.Fprintf(&b, "本章梗概: %s\n", chapter.Summary)
+	styleBlock := FormatStyleBibleBlock(bible)
+	plotScript := ""
 	if wf != nil && ThreeStageEnabled(wf.Spec.Params) {
-		if plot := ReadChapterPlot(wf, chapter.Num, width); plot != "" {
-			b.WriteString("\n本章剧情脚本（据此写正文，不得偏离）:\n")
-			b.WriteString(plot)
-			b.WriteString("\n")
-		}
+		plotScript = ReadChapterPlot(wf, chapter.Num, width)
 	}
-	if block := BuildRAGContextBlock(wf, outline.Title, chapter.Summary); block != "" {
-		b.WriteString("\n")
-		b.WriteString(block)
-		b.WriteString("\n")
+	ragBlock := ""
+	if wf != nil && outline != nil {
+		ragBlock = BuildRAGContextBlock(wf, outline.Title, chapter.Summary)
 	}
-	if context.ArcSummaries != "" {
-		b.WriteString("\n已完成故事弧摘要:\n")
-		b.WriteString(context.ArcSummaries)
-		b.WriteString("\n")
-	}
-	if context.StorySoFar != "" {
-		b.WriteString("\n更早剧情概要:\n")
-		b.WriteString(context.StorySoFar)
-		b.WriteString("\n")
-	}
-	if context.RecentSummaries != "" {
-		b.WriteString("\n近几章摘要:\n")
-		b.WriteString(context.RecentSummaries)
-		b.WriteString("\n")
-	}
-	if context.PreviousEnding != "" {
-		b.WriteString("\n上一章结尾（必须自然衔接）:\n")
-		b.WriteString(context.PreviousEnding)
-		b.WriteString("\n")
-	}
-	if wordsPerChapter > 0 {
-		fmt.Fprintf(&b, "\n目标字数约: %d 字（正文不少于 %d 字，须完整收束）\n", wordsPerChapter, MinChapterLength(wordsPerChapter))
-	}
-	b.WriteString("\n要求: 人物性格、时间线、伏笔与上文一致；本章需推进剧情并留下合理悬念；写足篇幅，不要草草收尾。")
-	return b.String()
+
+	return prompts.BuildChapterInstruction(
+		base,
+		outline.Title,
+		outline.Synopsis,
+		FormatCharacters(outline),
+		chapter.Num,
+		chapter.Title,
+		chapter.Summary,
+		plotScript,
+		ragBlock,
+		context.ArcSummaries,
+		context.StorySoFar,
+		context.RecentSummaries,
+		context.PreviousEnding,
+		wordsPerChapter,
+		styleBlock,
+	)
 }
 
 // ContextBundle carries rolling context for long novels.

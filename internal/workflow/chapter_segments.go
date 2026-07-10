@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"agent-flow/internal/prompts"
 )
 
 const (
@@ -118,6 +120,11 @@ func ParseSegmentConfig(instruction string) (segments int, segmentWords int, ok 
 
 // BuildSegmentInstruction renders prompt for one chapter segment.
 func BuildSegmentInstruction(baseInstruction string, segmentIndex, totalSegments, segmentWords int, priorTail, openingSample string) string {
+	return prompts.BuildSegmentInstruction(baseInstruction, segmentIndex, totalSegments, segmentWords, priorTail, openingSample)
+}
+
+// legacyBuildSegmentInstruction kept for reference
+func legacyBuildSegmentInstruction(baseInstruction string, segmentIndex, totalSegments, segmentWords int, priorTail, openingSample string) string {
 	base := stripSegmentDirectiveBlock(baseInstruction)
 	minSeg := MinSegmentRunes(segmentWords)
 

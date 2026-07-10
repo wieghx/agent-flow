@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	agentflowiov1alpha1 "agent-flow/api/v1alpha1"
+	"agent-flow/internal/prompts"
 )
 
 const defaultArcInterval = 10
@@ -67,6 +68,11 @@ func ArcEndFromStepID(stepID string) (int, bool) {
 
 // BuildArcSummaryInstruction creates prompt for arc recap task.
 func BuildArcSummaryInstruction(wf *agentflowiov1alpha1.Workflow, outline *NovelOutline, start, end, width int) string {
+	return prompts.BuildArcSummaryInstruction(wf.Spec.Prompt, start, end, width)
+}
+
+// legacyBuildArcSummaryInstruction is kept for reference.
+func legacyBuildArcSummaryInstruction(wf *agentflowiov1alpha1.Workflow, outline *NovelOutline, start, end, width int) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "你是小说编辑。请阅读第%d章到第%d章的内容，生成本故事弧摘要。\n", start, end)
 	if outline != nil {

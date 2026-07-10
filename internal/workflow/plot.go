@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	agentflowiov1alpha1 "agent-flow/api/v1alpha1"
+	"agent-flow/internal/prompts"
 )
 
 // ThreeStageEnabled reports whether 梗概→剧情→正文 pipeline is active.
@@ -86,39 +87,24 @@ func plotForeachInstruction(params map[string]string) string {
 
 // BuildPlotInstruction renders plot-stage worker prompt.
 func BuildPlotInstruction(wf *agentflowiov1alpha1.Workflow, base string, outline *NovelOutline, chapter ChapterOutline, context ContextBundle, params map[string]string, bible *StyleBible) string {
-	var b strings.Builder
-	if block := FormatStyleBibleBlock(bible); block != "" {
-		b.WriteString(block)
-		b.WriteString("\n\n")
+	styleBlock := FormatStyleBibleBlock(bible)
+	ragBlock := ""
+	if wf != nil && outline != nil {
+		ragBlock = BuildRAGContextBlock(wf, outline.Title, chapter.Summary)
 	}
-	b.WriteString(base)
-	b.WriteString("\n\n")
-	fmt.Fprintf(&b, "书名: %s\n", outline.Title)
-	fmt.Fprintf(&b, "全书简介: %s\n", outline.Synopsis)
-	if chars := FormatCharacters(outline); chars != "" {
-		b.WriteString("\n主要人物:\n")
-		b.WriteString(chars)
-		b.WriteString("\n")
-	}
-	fmt.Fprintf(&b, "\n当前章节: 第%d章《%s》\n", chapter.Num, chapter.Title)
-	fmt.Fprintf(&b, "本章梗概（据此扩写剧情）: %s\n", chapter.Summary)
-	if context.RecentSummaries != "" {
-		b.WriteString("\n近几章摘要:\n")
-		b.WriteString(context.RecentSummaries)
-		b.WriteString("\n")
-	}
-	if context.PreviousEnding != "" {
-		b.WriteString("\n上一章结尾（剧情须衔接）:\n")
-		b.WriteString(context.PreviousEnding)
-		b.WriteString("\n")
-	}
-	if block := BuildRAGContextBlock(wf, outline.Title, chapter.Summary); block != "" {
-		b.WriteString("\n")
-		b.WriteString(block)
-		b.WriteString("\n")
-	}
-	fmt.Fprintf(&b, "\n目标剧情脚本约 %d 字。\n", PlotWordsTarget(params))
-	return b.String()
+	return prompts.BuildPlotInstruction(
+		base,
+		outline.Title,
+		outline.Synopsis,
+		FormatCharacters(outline),
+		chapter.Num,
+		chapter.Title,
+		chapter.Summary,
+		context.RecentSummaries,
+		context.PreviousEnding,
+		ragBlock,
+		styleBlock,
+	)
 }
 
 func plotForeachDependsOn(outlineDep string) []string {

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	agentflowiov1alpha1 "agent-flow/api/v1alpha1"
+	"agent-flow/internal/prompts"
 )
 
 const (
@@ -87,22 +88,20 @@ func BuildRewriteInstruction(wf *agentflowiov1alpha1.Workflow) (string, error) {
 		return "", fmt.Errorf("chapter %d not found in outline", num)
 	}
 
-	var b strings.Builder
-	if bible, _ := LoadStyleBible(wf); bible != nil {
-		if block := FormatStyleBibleBlock(bible); block != "" {
-			b.WriteString(block)
-			b.WriteString("\n\n")
-		}
+	base, err := prompts.BuildRewriteInstruction(wf.Spec.Prompt, num, layer, note)
+	if err != nil {
+		return "", err
 	}
 
-	if layer == RewriteLayerPlot {
-		b.WriteString("你是小说剧情编剧。请根据作者修改意见，重写本章「剧情脚本」（不是正文）。\n\n")
-	} else {
-		b.WriteString("你是小说作者。请根据作者修改意见，重写本章正文。\n\n")
+	var b strings.Builder
+	b.WriteString(base)
+	if bible, _ := LoadStyleBible(wf); bible != nil {
+		if block := FormatStyleBibleBlock(bible); block != "" {
+			b.WriteString("\n\n")
+			b.WriteString(block)
+		}
 	}
-	fmt.Fprintf(&b, "书名: %s\n", outline.Title)
-	fmt.Fprintf(&b, "全书简介: %s\n", outline.Synopsis)
-	fmt.Fprintf(&b, "当前章节: 第%d章《%s》\n", chapter.Num, chapter.Title)
+	fmt.Fprintf(&b, "\n当前章节: 第%d章《%s》\n", chapter.Num, chapter.Title)
 	fmt.Fprintf(&b, "本章梗概: %s\n", chapter.Summary)
 
 	if layer == RewriteLayerPlot {
